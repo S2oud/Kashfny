@@ -1,0 +1,16 @@
+1:"$Sreact.fragment"
+2:I[5244,[],""]
+3:I[3866,[],""]
+4:I[7033,[],"ClientPageRoot"]
+5:I[7259,["220","static/chunks/app/about/page-e0d505cca5e4dbc8.js"],"default"]
+8:I[6213,[],"OutletBoundary"]
+a:I[6213,[],"MetadataBoundary"]
+c:I[6213,[],"ViewportBoundary"]
+e:I[4835,[],""]
+:HL["_next/static/css/7d28fa2445be0b32.css","style"]
+0:{"P":null,"b":"3sx2VtG15NsCmIIjO9ZtK","p":"/Kashfny","c":["","about"],"i":false,"f":[]}
+6:{}
+7:{}
+d:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+b:[["$","meta","0",{"charSet":"utf-8"}],["$","title","1",{"children":"كاشفني - حاسبة النقاط"}],["$","meta","2",{"name":"description","content":"تطبيق لحساب نقاط لعبة الورق كاشفني"}],["$","link","3",{"rel":"icon","href":"/Kashfny/favicon.ico","type":"image/x-icon","sizes":"16x16"}]]
+9:null
