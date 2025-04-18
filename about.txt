@@ -7,7 +7,7 @@
 a:I[6213,[],"MetadataBoundary"]
 c:I[6213,[],"ViewportBoundary"]
 e:I[4835,[],""]
-:HL["/Kashfny/_next/static/css/7d28fa2445be0b32.css","style"]
+:HL["_next/static/css/7d28fa2445be0b32.css","style"]
 0:{"P":null,"b":"3sx2VtG15NsCmIIjO9ZtK","p":"/Kashfny","c":["","about"],"i":false,"f":[]}
 6:{}
 7:{}
