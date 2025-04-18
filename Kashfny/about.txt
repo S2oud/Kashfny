@@ -2,12 +2,12 @@
 2:I[5244,[],""]
 3:I[3866,[],""]
 4:I[7033,[],"ClientPageRoot"]
-5:I[7259,["220","Kashfny/_next/static/chunks/app/about/page-e0d505cca5e4dbc8.js"],"default"]
+5:I[7259,["220","/Kashfny/_next/static/chunks/app/about/page-e0d505cca5e4dbc8.js"],"default"]
 8:I[6213,[],"OutletBoundary"]
 a:I[6213,[],"MetadataBoundary"]
 c:I[6213,[],"ViewportBoundary"]
 e:I[4835,[],""]
-:HL["Kashfny/_next/static/css/7d28fa2445be0b32.css","style"]
+:HL["/Kashfny/_next/static/css/7d28fa2445be0b32.css","style"]
 0:{"P":null,"b":"3sx2VtG15NsCmIIjO9ZtK","p":"/Kashfny","c":["","about"],"i":false,"f":[]}
 6:{}
 7:{}
