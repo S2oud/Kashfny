@@ -1,3 +1,5 @@
+import {contactBalance,prepareContact,revealExternal} from './contact-providers.js';
+import {preparePosts,searchPosts} from './posts.js';
 // Cloudflare Worker for Gulf Talent AI. Store secrets in Cloudflare, never in GitHub Pages.
 import {quotaFor} from './quota.js';
 import {resolveCompany,organizationQuery} from './company-directory.js';
@@ -149,22 +151,23 @@ async function brief(input,env){
   return {brief:text||"No summary generated"};
 }
 export default {async fetch(request,env){
+  if(env.ASSETS&&request.method==='GET'&&new URL(request.url).pathname.startsWith('/app/'))return env.ASSETS.fetch(request);
   const origin=originFor(request,env);
   if(origin===null)return response({error:"Origin forbidden"},403);
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type,X-Device-Token","Access-Control-Max-Age":"3600"}});
   const url=new URL(request.url);
   if(url.pathname==="/"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI API",frontend:"https://s2oud.github.io/Kashfny/gulf-talent-ai/",health:"/health",message:"This is the private search API backend, not the website."},200,origin);
-  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,fullenrich:!!env.FULLENRICH_API_KEY},200,origin);
+  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,fullenrich:!!env.FULLENRICH_API_KEY,lusha:!!env.LUSHA_API_KEY,hunter:!!env.HUNTER_API_KEY},200,origin);
   if(["/auth-check","/usage","/provider-check"].includes(url.pathname)&&request.method==="GET"){
     if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret in Cloudflare Worker"},503,origin);
     if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"APP_TOKEN does not match"},401,origin);
     try {
-      if(url.pathname==='/provider-check'){let getprospect={configured:!!env.GETPROSPECT_API_KEY};if(getprospect.configured){try{getprospect=await getProspectBalance(env)}catch(e){getprospect={configured:true,connected:false,error:short(e.message,100)}}}let fullenrich={configured:!!env.FULLENRICH_API_KEY};if(fullenrich.configured){try{fullenrich=await fullEnrichBalance(env)}catch(e){fullenrich={configured:true,connected:false,error:short(e.message,100)}}}return response({getprospect,fullenrich},200,origin)}
+      if(url.pathname==='/provider-check'){let getprospect={configured:!!env.GETPROSPECT_API_KEY};if(getprospect.configured){try{getprospect=await getProspectBalance(env)}catch(e){getprospect={configured:true,connected:false,error:short(e.message,100)}}}let fullenrich={configured:!!env.FULLENRICH_API_KEY};if(fullenrich.configured){try{fullenrich=await fullEnrichBalance(env)}catch(e){fullenrich={configured:true,connected:false,error:short(e.message,100)}}}const extra=Object.fromEntries(await Promise.all(['Lusha','Hunter'].map(async name=>{if(!env[name.toUpperCase()+'_API_KEY'])return [name.toLowerCase(),{configured:false}];try{return [name.toLowerCase(),await contactBalance(env,name)]}catch(e){return [name.toLowerCase(),{configured:true,connected:false,error:short(e.message,100)}]}})));return response({getprospect,fullenrich,...extra},200,origin)}
       const usage=await quotaFor(request,env);
-      return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,fullenrich:!!env.FULLENRICH_API_KEY,usage},200,origin);
+      return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,fullenrich:!!env.FULLENRICH_API_KEY,lusha:!!env.LUSHA_API_KEY,hunter:!!env.HUNTER_API_KEY,usage},200,origin);
     } catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
   }
-  if(request.method!=="POST"||!["/search","/brief","/enrich","/enrich-status"].includes(url.pathname))return response({error:"Not found"},404,origin);
+  if(request.method!=="POST"||!["/search","/posts-search","/brief","/enrich","/enrich-status"].includes(url.pathname))return response({error:"Not found"},404,origin);
   if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret"},503,origin);
   if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"Unauthorized"},401,origin);
   let usage;
@@ -172,7 +175,8 @@ export default {async fetch(request,env){
     const input=await request.json();
     if(JSON.stringify(input).length>14000)return response({error:"Payload too large"},413,origin);
     if(url.pathname==='/enrich-status'){let pollUsage;try{pollUsage=await quotaFor(request,env)}catch{return response({error:'Usage protection unavailable. Try again later.'},503,origin)}try{return response({...await fullRevealStatus(env,input.ticket,pollUsage.deviceToken),usage:pollUsage},200,origin)}catch(e){return response({error:short(e.message,150),usage:pollUsage},e.status||502,origin)}}
-    let revealInput;if(url.pathname==='/enrich'){if(input.provider&&!['GetProspect','FullEnrich'].includes(input.provider))return response({error:'Unknown contact provider'},400,origin);try{revealInput=input.provider==='FullEnrich'?prepareFullReveal(input,env):prepareReveal(input,env)}catch(e){return response({error:e.message},(input.provider==='FullEnrich'?env.FULLENRICH_API_KEY:env.GETPROSPECT_API_KEY)?400:503,origin)}}
+    if(url.pathname==='/posts-search'){try{preparePosts(input)}catch(e){return response({error:e.message},400,origin)}}
+    let revealInput;if(url.pathname==='/enrich'){if(input.provider&&!['GetProspect','FullEnrich','Lusha','Hunter'].includes(input.provider))return response({error:'Unknown contact provider'},400,origin);try{revealInput=['Lusha','Hunter'].includes(input.provider)?prepareContact(input,env):input.provider==='FullEnrich'?prepareFullReveal(input,env):prepareReveal(input,env)}catch(e){return response({error:e.message},400,origin)}}
     if(url.pathname==='/search'&&Array.isArray(input.companies)){try{selectedCompanies(input)}catch(e){return response({error:e.message},400,origin)}}
     try { usage=await quotaFor(request,env,true); }
     catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
@@ -181,7 +185,7 @@ export default {async fetch(request,env){
       res.headers.set('Retry-After',String(Math.max(1,Math.ceil((Date.parse(usage.resetAt)-Date.now())/1000))));
       return res;
     }
-    const out=url.pathname==="/search"?await search(input,env):url.pathname==="/enrich"?(input.provider==='FullEnrich'?await startFullReveal(env,revealInput,usage.deviceToken):await getProspectReveal(env,revealInput)):await brief(input,env);
+    const out=url.pathname==="/posts-search"?await searchPosts(input,env):url.pathname==="/search"?await search(input,env):url.pathname==="/enrich"?(['Lusha','Hunter'].includes(input.provider)?await revealExternal(env,revealInput):input.provider==='FullEnrich'?await startFullReveal(env,revealInput,usage.deviceToken):await getProspectReveal(env,revealInput)):await brief(input,env);
     return response({...out,usage},out.status||200,origin);
   }catch(e){return response({error:short(e.message||"Search failed",150),...(usage?{usage}:{})},502,origin)}
 }};
