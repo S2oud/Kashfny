@@ -104,6 +104,6 @@ Optional server secrets `LUSHA_API_KEY` and `HUNTER_API_KEY` enable Lusha v3 wor
 
 `POST /posts-search` accepts `keyword` (2–120 chars), `days` (`7`, `30`, `90`, `all`) and `sort` (`recent`, `relevance`). It consumes one daily attempt, combines public indexed LinkedIn post sources from Tavily/Exa, filters recruiting content and keyword terms, deduplicates source URLs, and optionally asks OpenAI to summarize supplied text in Arabic. AI cannot add source URLs or fabricate posts. Unknown dates are labelled and retained; full LinkedIn coverage and full text are not guaranteed. Excerpts are capped at 5,000 characters to keep the latest ten result snapshots within browser storage limits. Source links open the original posts.
 
-`node build-assets.mjs` copies only four explicit public frontend files into `.site-assets/app/`. Wrangler serves them at `https://gulftalent.saud3690.workers.dev/app/` as an alternative while GitHub Pages is delayed. The two hosting origins have independent browser history. Existing GitHub Pages history is preserved there.
+`node build-assets.mjs` copies only five explicit public frontend files into `.site-assets/app/`. Wrangler serves them at `https://gulftalent.saud3690.workers.dev/app/` as an alternative while GitHub Pages is delayed. The two hosting origins have independent browser history. Existing GitHub Pages history is preserved there.
 
 Official references: https://docs.lusha.com/openapi.json and https://hunter.io/api-documentation/v2.
