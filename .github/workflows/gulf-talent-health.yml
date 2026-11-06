@@ -15,39 +15,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Check deployed Cloudflare Worker and providers (no secrets)
+      - name: Diagnose Worker reachability and CORS without secrets
         run: |
           python3 - <<'PY'
-          import json, sys, urllib.request, urllib.error
+          import json, urllib.request, urllib.error, sys
           url = "https://gulftalent.saud3690.workers.dev/health"
-          print("Checking", url, flush=True)
-          req = urllib.request.Request(url, headers={"Origin":"https://s2oud.github.io","Accept":"application/json"})
-          try:
-              with urllib.request.urlopen(req, timeout=20) as resp:
-                  raw = resp.read(3000).decode("utf-8","replace")
-                  status = resp.status
-                  cors = resp.headers.get("Access-Control-Allow-Origin")
-                  content_type = resp.headers.get("Content-Type")
-          except Exception as e:
-              print("Worker request failed:", type(e).__name__, str(e))
-              sys.exit(1)
-          print("HTTP status:", status, "Content-Type:", content_type, "CORS:", cors)
-          try:
-              data = json.loads(raw)
-          except Exception:
-              print("Worker returned non-JSON response (first 200 chars):", raw[:200])
-              sys.exit(1)
-          print("Worker response:", {k:data.get(k) for k in ("ok","service","exa","tavily","openai")})
-          if data.get("ok") is not True:
-              print("FAIL: script /health endpoint is not active")
-              sys.exit(1)
-          if cors != "https://s2oud.github.io":
-              print("FAIL: CORS origin is not configured correctly")
-              sys.exit(1)
-          if not data.get("exa") or not data.get("tavily"):
-              print("FAIL: some runtime keys are missing: check EXA_API_KEY and TAVILY_API_KEY (not Build variables)")
-              sys.exit(1)
-          print("PASS: Worker is online; Exa and Tavily runtime keys are configured.")
-          if data.get("openai"):
-              print("OpenAI secret present; AI brief still requires a separately billed valid key.")
+          outputs=[]
+          for label,headers in (
+            ("direct",{"Accept":"application/json"}),
+            ("browser-origin",{"Origin":"https://s2oud.github.io","Accept":"application/json"})):
+            req=urllib.request.Request(url,headers=headers)
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                status=r.status
+                body=r.read(1500).decode("utf-8","replace")
+                cors=r.headers.get("Access-Control-Allow-Origin","")
+                server=r.headers.get("Server","")
+            except urllib.error.HTTPError as e:
+              status=e.code
+              body=e.read(1500).decode("utf-8","replace")
+              cors=e.headers.get("Access-Control-Allow-Origin","")
+              server=e.headers.get("Server","")
+            except Exception as e:
+              print(label, "request failed:",type(e).__name__,str(e))
+              outputs.append(False)
+              continue
+            print(label,"status:",status,"CORS:",repr(cors),"server:",server,"body:",body[:500])
+            try: data=json.loads(body)
+            except Exception: data={}
+            outputs.append(status==200 and data.get("ok") is True and data.get("exa") is True and data.get("tavily") is True and (label!="browser-origin" or cors=="https://s2oud.github.io"))
+          if all(outputs):
+            print("PASS: Worker deployed with Exa and Tavily runtime secrets.")
+          else:
+            print("FAIL: Worker deployment, runtime secrets or CORS need correction.")
+            sys.exit(1)
           PY
