@@ -82,3 +82,11 @@ The picker accepts up to 10 companies per request, including a group's general n
 `company-groups.js` holds sourced search families for ADNOC, Mubadala, TAQA, Emirates Group, Dubai Holding and G42. These are search families, not claims of 100% legal ownership. Parent-only source mentions are labelled with an unspecified branch; a selected branch is never asserted solely from the query. Explicit sibling mentions are excluded for a branch selection. Family definitions have source URLs; Dubai Holding's asset/TECOM relationship is additionally documented at https://www.dubaiholding.com/en/our-business/our-companies/dubai-holding-asset-management .
 
 Run all checks: `node --test gulf-talent-ai/*.test.mjs` (or explicitly list the four test files in PowerShell).
+
+
+## GetProspect contact data
+Store `GETPROSPECT_API_KEY` as a Cloudflare runtime secret. No provider key belongs in the static app. Recruiting searches also query GetProspect's structured People Search with email/phone enrichment explicitly disabled. Each company receives at most one page of 25 preview profiles, merged with other source providers.
+
+Authenticated `GET /provider-check` checks the account balance without contact reveals or daily quota consumption. `POST /enrich` accepts a public LinkedIn person URL and exactly one `reveal` value (`email` or `phone`). It reserves one existing daily use before a provider call. Only revealed, unmasked business emails and provider-reported numbers are returned; a mismatched profile is rejected. Email lookup may take over a minute. Pending responses require a deliberate follow-up; there are no automatic paid retries. Successful/not-found outcomes are retained in the browser's current results, saved leads and matching history snapshots. Provider evidence is labelled separately from independently verified identity/employment.
+
+The existing 10/day device/network cap includes searches, AI briefs and contact lookups. Provider credits/wallet limits are separate. This integration does not enable auto-top-up or subscribe the account to a paid plan. GetProspect docs: https://getprospect.com/api-docs/people-search , https://getprospect.com/api-docs/people-enrich , https://getprospect.com/api-docs/credits .

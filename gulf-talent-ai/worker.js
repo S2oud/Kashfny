@@ -2,6 +2,7 @@
 import {quotaFor} from './quota.js';
 import {resolveCompany,organizationQuery} from './company-directory.js';
 import {selectedCompanies,affiliation,mergeCompanyResults,groupFor} from './company-groups.js';
+import {getProspectSearch,getProspectBalance,getProspectReveal,prepareReveal} from './getprospect.js';
 export {DailyQuota} from './quota.js';
 const JSON_HEADERS = {"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
 const allowedCountries = new Set(["UAE","Saudi Arabia","Qatar","Kuwait","Bahrain","Oman","All GCC"]);
@@ -36,7 +37,7 @@ function convert(r,provider,company){
   const known=knownDomains[(company||'').toUpperCase()]||(website?new URL(website).hostname.replace(/^www\./,''):null);
   const official=known?(domain===known||domain.endsWith('.'+known)):Boolean(company&&company.length>4&&domain.toLowerCase().split('.')[0]===company.toLowerCase().replace(/[^a-z0-9]/g,''));
   const phone=official?officePhone(text):null;
-  return {id:source.toLowerCase(),name:title.split(/\s[-–—|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:/linkedin\.com\/in\//.test(source)?"profile":"source",emails:official?emails(text).filter(email=>email.endsWith("@"+domain)):[],phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null};
+  return {id:source.toLowerCase(),name:title.split(/\s[-–—|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:/linkedin\.com\/in\//.test(source)?"profile":"source",emails:official?emails(text).filter(email=>email.endsWith("@"+domain)):[],phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null,...(r.providerPersonId?{providerPersonId:r.providerPersonId,contactAvailability:r.contactAvailability}: {})};
 }
 async function exa(env,query,limit,category){
   if(!env.EXA_API_KEY)return [];
@@ -89,7 +90,7 @@ async function searchSingle(input,env,selectedOrganization=null){
   const role=types.map(type=>options[type]).join(' OR ');
   if(!allowedCountries.has(country))return {error:'Invalid country',status:400};
   if(!company)return {error:'Enter a company name',status:400};
-  if(!env.EXA_API_KEY&&!env.TAVILY_API_KEY&&!env.OPENAI_API_KEY)return {error:'Configure a search provider on Cloudflare',status:503};
+  if(!env.EXA_API_KEY&&!env.TAVILY_API_KEY&&!env.OPENAI_API_KEY&&!env.GETPROSPECT_API_KEY)return {error:'Configure a search provider on Cloudflare',status:503};
   const aliases={ADIA:'Abu Dhabi Investment Authority',ADNOC:'Abu Dhabi National Oil Company',G42:'Group 42'};
   const family=groupFor(organization?.id);
   const target=organizationQuery(organization,company+(aliases[company.toUpperCase()]?' '+aliases[company.toUpperCase()]:''))+(family?' '+family.name:'');
@@ -98,6 +99,7 @@ async function searchSingle(input,env,selectedOrganization=null){
   const tasks=[{provider:'Exa',run:()=>exa(env,query,18,category)},
     {provider:'Tavily',run:()=>tavily(env,query,10)},
     {provider:'Tavily',run:()=>tavily(env,`${family&&family.parent!==organization?.id?family.name:target} ${job} site:linkedin.com/in/`,10,['linkedin.com'])}];
+  if(env.GETPROSPECT_API_KEY)tasks.push({provider:'GetProspect',run:()=>getProspectSearch(env,organization||{name:company},country,types)});
   const pending=await Promise.allSettled(tasks.map(task=>task.run()));
   const candidates=pending.filter(x=>x.status==='fulfilled').flatMap(x=>x.value);
   tasks.push({provider:'OpenAI Web'});
@@ -151,22 +153,24 @@ export default {async fetch(request,env){
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type,X-Device-Token","Access-Control-Max-Age":"3600"}});
   const url=new URL(request.url);
   if(url.pathname==="/"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI API",frontend:"https://s2oud.github.io/Kashfny/gulf-talent-ai/",health:"/health",message:"This is the private search API backend, not the website."},200,origin);
-  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
-  if(["/auth-check","/usage"].includes(url.pathname)&&request.method==="GET"){
+  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY},200,origin);
+  if(["/auth-check","/usage","/provider-check"].includes(url.pathname)&&request.method==="GET"){
     if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret in Cloudflare Worker"},503,origin);
     if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"APP_TOKEN does not match"},401,origin);
     try {
+      if(url.pathname==='/provider-check'){let getprospect={configured:!!env.GETPROSPECT_API_KEY};if(getprospect.configured){try{getprospect=await getProspectBalance(env)}catch(e){getprospect={configured:true,connected:false,error:short(e.message,100)}}}return response({getprospect},200,origin)}
       const usage=await quotaFor(request,env);
-      return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,usage},200,origin);
+      return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,usage},200,origin);
     } catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
   }
-  if(request.method!=="POST"||!["/search","/brief"].includes(url.pathname))return response({error:"Not found"},404,origin);
+  if(request.method!=="POST"||!["/search","/brief","/enrich"].includes(url.pathname))return response({error:"Not found"},404,origin);
   if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret"},503,origin);
   if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"Unauthorized"},401,origin);
   let usage;
   try{
     const input=await request.json();
     if(JSON.stringify(input).length>14000)return response({error:"Payload too large"},413,origin);
+    let revealInput;if(url.pathname==='/enrich'){try{revealInput=prepareReveal(input,env)}catch(e){return response({error:e.message},env.GETPROSPECT_API_KEY?400:503,origin)}}
     if(url.pathname==='/search'&&Array.isArray(input.companies)){try{selectedCompanies(input)}catch(e){return response({error:e.message},400,origin)}}
     try { usage=await quotaFor(request,env,true); }
     catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
@@ -175,7 +179,7 @@ export default {async fetch(request,env){
       res.headers.set('Retry-After',String(Math.max(1,Math.ceil((Date.parse(usage.resetAt)-Date.now())/1000))));
       return res;
     }
-    const out=url.pathname==="/search"?await search(input,env):await brief(input,env);
+    const out=url.pathname==="/search"?await search(input,env):url.pathname==="/enrich"?await getProspectReveal(env,revealInput):await brief(input,env);
     return response({...out,usage},out.status||200,origin);
   }catch(e){return response({error:short(e.message||"Search failed",150),...(usage?{usage}:{})},502,origin)}
 }};
