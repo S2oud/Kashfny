@@ -1,6 +1,7 @@
 // Cloudflare Worker for Gulf Talent AI. Store secrets in Cloudflare, never in GitHub Pages.
 import {quotaFor} from './quota.js';
-import {resolveCompany,organizationQuery,matchesOrganization} from './company-directory.js';
+import {resolveCompany,organizationQuery} from './company-directory.js';
+import {selectedCompanies,affiliation,mergeCompanyResults,groupFor} from './company-groups.js';
 export {DailyQuota} from './quota.js';
 const JSON_HEADERS = {"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
 const allowedCountries = new Set(["UAE","Saudi Arabia","Qatar","Kuwait","Bahrain","Oman","All GCC"]);
@@ -34,7 +35,7 @@ function convert(r,provider,company){
   const known=knownDomains[(company||'').toUpperCase()];
   const official=known?(domain===known||domain.endsWith('.'+known)):Boolean(company&&company.length>4&&domain.toLowerCase().split('.')[0]===company.toLowerCase().replace(/[^a-z0-9]/g,''));
   const phone=official?officePhone(text):null;
-  return {id:source.toLowerCase(),name:title.split(/\s[-–|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:/linkedin\.com\/in\//.test(source)?"profile":"source",emails:official?emails(text).filter(email=>email.endsWith("@"+domain)):[],phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null};
+  return {id:source.toLowerCase(),name:title.split(/\s[-–—|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:/linkedin\.com\/in\//.test(source)?"profile":"source",emails:official?emails(text).filter(email=>email.endsWith("@"+domain)):[],phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null};
 }
 async function exa(env,query,limit,category){
   if(!env.EXA_API_KEY)return [];
@@ -77,9 +78,9 @@ async function openaiSearch(env,company,role,country,category,candidates=[]){
   let parsed;try{parsed=JSON.parse(text)}catch{throw Error('OpenAI returned no structured sourced results')}
   return (Array.isArray(parsed.results)?parsed.results:[]).filter(x=>sources.has(canonicalSource(x.url))).slice(0,12);
 }
-async function search(input,env){
+async function searchSingle(input,env,selectedOrganization=null){
   const enteredCompany=short(input.company,200),country=short(input.country,35)||'UAE',category='people';
-  const organization=resolveCompany(enteredCompany,country,short(input.companyId,200));
+  const organization=resolveCompany(enteredCompany,country,short(input.companyId,200))||selectedOrganization;
   const company=organization?.name||enteredCompany;
   const options={'talent-acquisition':'Talent Acquisition','hr-recruiting':'HR Recruiting Recruitment Recruiter','executive-search':'Executive Search Headhunter'};
   const types=Array.isArray(input.types)?[...new Set(input.types)]:[];
@@ -89,12 +90,13 @@ async function search(input,env){
   if(!company)return {error:'Enter a company name',status:400};
   if(!env.EXA_API_KEY&&!env.TAVILY_API_KEY&&!env.OPENAI_API_KEY)return {error:'Configure a search provider on Cloudflare',status:503};
   const aliases={ADIA:'Abu Dhabi Investment Authority',ADNOC:'Abu Dhabi National Oil Company',G42:'Group 42'};
-  const target=organizationQuery(organization,company+(aliases[company.toUpperCase()]?' '+aliases[company.toUpperCase()]:''));
+  const family=groupFor(organization?.id);
+  const target=organizationQuery(organization,company+(aliases[company.toUpperCase()]?' '+aliases[company.toUpperCase()]:''))+(family?' '+family.name:'');
   const job=role||'Talent Acquisition Recruitment HR';
   const query=category==='companies'?`${target||job} companies operating in ${country}`:`${target} ${job} ${country} professional profile`;
   const tasks=[{provider:'Exa',run:()=>exa(env,query,18,category)},
     {provider:'Tavily',run:()=>tavily(env,query,10)},
-    {provider:'Tavily',run:()=>tavily(env,`${target} ${job} site:linkedin.com/in/`,10,['linkedin.com'])}];
+    {provider:'Tavily',run:()=>tavily(env,`${family&&family.parent!==organization?.id?family.name:target} ${job} site:linkedin.com/in/`,10,['linkedin.com'])}];
   const pending=await Promise.allSettled(tasks.map(task=>task.run()));
   const candidates=pending.filter(x=>x.status==='fulfilled').flatMap(x=>x.value);
   tasks.push({provider:'OpenAI Web'});
@@ -110,12 +112,24 @@ async function search(input,env){
   const hiring=/talent acquisition|recruit(?:er|ment|ing)|headhunt|executive search|استقطاب|توظيف/i;
   const results=[...map.values()].filter(x=>{
     const text=x.title+' '+x.excerpt;
-    const companyMatch=matchesOrganization(text,organization,company)||Boolean(aliases[company.toUpperCase()]&&text.toLowerCase().includes(aliases[company.toUpperCase()].toLowerCase()));
+    const evidence=affiliation(text,organization||{id:'custom:'+company.toLowerCase(),name:company,aliases:[]});
+    const companyMatch=Boolean(evidence);if(evidence){x.companyLabels=evidence.labels;x.branchUnspecified=evidence.branchUnspecified;x.matchedCompanyIds=[organization?.id||'custom:'+company.toLowerCase()];x.organization=evidence.labels.map(label=>label.name).join(' · ');}
     const generic=/career guide|how to get a job|working at|\bvacanc|\bjob openings|\bjob listings|\bcareers\b|وظائف شاغرة|دليل التوظيف/i.test(x.title);
     const unrelated=/talent development|talent management|HR operations|learning and development|تطوير المواهب|إدارة المواهب|عمليات الموارد البشرية/i.test(x.title)&&!hiring.test(x.title);
     return hiring.test(text)&&companyMatch&&!generic&&!unrelated&&(x.category==='profile'||hiring.test(x.title));
   }).sort((a,b)=>b.score-a.score).slice(0,40);
   return {query,organization:organization?{id:organization.id,name:organization.name,country:organization.country}:null,results,errors,providerStatus,sourceCount:results.length,returnedAt:new Date().toISOString(),warning:'Source-backed research leads, not verified employees. Check current employment and contact details in the linked sources.'};
+}
+async function search(input,env){
+  let companies;try{companies=selectedCompanies(input)}catch(e){return {error:e.message,status:400}}
+  if(companies.length===1&&!Array.isArray(input.companies))return searchSingle(input,env);
+  const batches=await Promise.all(companies.map(async company=>{
+    try{return {...await searchSingle({...input,company:company.name,companyId:company.id},env,company),company}}
+    catch(e){return {company,results:[],errors:[short(e.message,100)],providerStatus:{},status:502}}
+  }));
+  const invalid=batches.find(b=>b.status===400);if(invalid)return invalid;
+  const results=mergeCompanyResults(batches);
+  return {results,companies:companies.map(c=>({id:c.id,name:c.name})),companySummaries:batches.map(b=>({id:b.company.id,name:b.company.name,count:results.filter(r=>r.matchedCompanyIds.includes(b.company.id)).length,errors:b.errors||[],providerStatus:b.providerStatus||{}})),errors:batches.flatMap(b=>(b.errors||[b.error].filter(Boolean)).map(e=>b.company.name+': '+e)),sourceCount:results.length,returnedAt:new Date().toISOString(),usageCost:1};
 }
 async function brief(input,env){
   if(!env.OPENAI_API_KEY)return {error:"Configure OPENAI_API_KEY server secret to enable AI brief. ChatGPT plan does not supply API access.",status:503};
@@ -149,6 +163,7 @@ export default {async fetch(request,env){
   try{
     const input=await request.json();
     if(JSON.stringify(input).length>14000)return response({error:"Payload too large"},413,origin);
+    if(url.pathname==='/search'&&Array.isArray(input.companies)){try{selectedCompanies(input)}catch(e){return response({error:e.message},400,origin)}}
     try { usage=await quotaFor(request,env,true); }
     catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
     if(!usage.allowed){

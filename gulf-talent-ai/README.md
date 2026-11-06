@@ -74,3 +74,11 @@ All three recruiting categories are checked on a new search by default. Dark mod
 The latest 10 searches now retain up to 40 returned contact/source cards per search in browser storage. “Show recruiting contacts” restores the snapshot and filters without a network search or usage charge. Existing history entries without snapshots are clearly marked unavailable rather than silently re-querying. Records are local to this browser; clearing browser data clears saved history.
 
 Validation: `node --test gulf-talent-ai/quota.test.mjs gulf-talent-ai/search.test.mjs gulf-talent-ai/directory-history.test.mjs`.
+
+
+## Multi-company recruiting search
+The picker accepts up to 10 companies per request, including a group's general name and its catalogued subsidiaries. A bounded batch costs one daily attempt. The server validates the selection limit before consuming quota, queries each company, tolerates partial provider failures, deduplicates canonical source URLs, and interleaves results up to 100 total. The UI filters these results by selected company and saves all 100 results with the last ten search snapshots. AI briefs send only 12 compact source excerpts.
+
+`company-groups.js` holds sourced search families for ADNOC, Mubadala, TAQA, Emirates Group and Dubai Holding. These are search families, not claims of 100% legal ownership. Parent-only source mentions are labelled with an unspecified branch; a selected branch is never asserted solely from the query. Explicit sibling mentions are excluded for a branch selection. Family definitions have source URLs; Dubai Holding's asset/TECOM relationship is additionally documented at https://www.dubaiholding.com/en/our-business/our-companies/dubai-holding-asset-management .
+
+Run all checks: `node --test gulf-talent-ai/*.test.mjs` (or explicitly list the four test files in PowerShell).
