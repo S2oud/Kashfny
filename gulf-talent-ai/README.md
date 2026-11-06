@@ -13,7 +13,7 @@ This website lives in `gulf-talent-ai/index.html` within the existing public S2o
 
 ## Cloudflare Worker setup
 1. Create or log into [Cloudflare](https://dash.cloudflare.com/) and create a Worker.
-2. Paste `worker.js` into that Worker (or run Wrangler from the `gulf-talent-ai` folder).
+2. Connect GitHub repository `S2oud/Kashfny` under Worker Settings → Builds. Set the root directory to `gulf-talent-ai`, production branch `main`, leave build command empty, and use deploy command `npx wrangler deploy`. The included `wrangler.toml` sets `name = "gulftalent"` and `main = "./worker.js"`, ensuring the deployment is a code Worker rather than static-assets-only. If your Worker is named differently, its name must match the Wrangler name.
 3. Set the environment variable `ALLOWED_ORIGIN` to exactly `https://s2oud.github.io` (this is the **origin**, not the full path), and optionally `http://localhost:8000` for local testing; **do not** set wildcard `*`.
 4. In Cloudflare Workers → Settings → Variables/Secrets, add `EXA_API_KEY` from your Exa account and optionally `TAVILY_API_KEY` from Tavily.
 5. Add `APP_TOKEN` as a long random secret (at least 32 random bytes). It must match what you enter in the website's API Settings. The token is saved in browser localStorage in this MVP — safe enough only for a trusted personal browser; upgrade to Cloudflare Access for stronger authentication before broader use.
@@ -22,8 +22,8 @@ This website lives in `gulf-talent-ai/index.html` within the existing public S2o
 
 Example `wrangler.toml`:
 ```toml
-name = "gulf-talent-ai-api"
-main = "worker.js"
+name = "gulftalent"
+main = "./worker.js"
 compatibility_date = "2026-11-01"
 
 [vars]
@@ -48,3 +48,6 @@ Use only the ones relevant to your accounts.
 
 ## Technical notes
 The static interface stores history, saved cards, Worker URL and APP_TOKEN on your own device. Its backend is `worker.js` and requires deployment on Cloudflare Workers. API keys must **never** be committed to GitHub or exposed in frontend JavaScript.
+
+## Fix: "Variables cannot be added to a Worker that only has static assets"
+This means the existing Cloudflare deployment contains static files only. In **Workers & Pages → gulftalent → Settings → Builds**, ensure the GitHub repository is `S2oud/Kashfny`, branch is `main`, root directory is `gulf-talent-ai`, build command is blank, and deployment command is `npx wrangler deploy`. Retry deployment after saving. The repository contains `worker.js` and `wrangler.toml` (whose `main` points to that script). After deploying code successfully, add runtime secrets `EXA_API_KEY`, `TAVILY_API_KEY`, `APP_TOKEN` under **Settings → Variables and Secrets**; do not put secrets in Build variables. `OPENAI_API_KEY` remains optional. Check `https://gulftalent.saud3690.workers.dev/health` for a JSON status. A static HTML response or 404 means the code has not deployed correctly.
