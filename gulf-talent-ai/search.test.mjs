@@ -39,4 +39,5 @@ test('backend canonicalizes lowercase ADIA and Arabic ministry aliases before se
     assert.match(lower.query,/Abu Dhabi Investment Authority/);
     assert.equal(ministry.organization.name,'Ministry of Interior UAE');assert.match(ministry.query,/Ministry of Interior UAE/);
     assert.ok(queries.every(query=>!query.includes('undefined')));
-  } fi
+  } finally { globalThis.fetch=original; }
+});

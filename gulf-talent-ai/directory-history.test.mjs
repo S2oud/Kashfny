@@ -31,4 +31,5 @@ test('history keeps newest ten snapshots and returns independent saved results',
   contacts[0].name='Changed';assert.equal(history[0].contacts[0].name,'Test contact');
   const restored=storedResults(history[0]);restored[0].name='Edited';assert.equal(history[0].contacts[0].name,'Test contact');
   assert.equal(storedResults({company:'legacy search without contacts'}),null);
-  assert.deepEqual(storedResults(recordSearch([],{compan
+  assert.deepEqual(storedResults(recordSearch([],{company:'No matches'},[])[0]),[]);
+});

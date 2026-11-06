@@ -43,4 +43,6 @@ export function matchesOrganization(text, company, fallback='') {
   const terms=company?[company.name,company.searchName,...company.aliases]:[fallback];
   return terms.filter(Boolean).some(value=>{
     const term=normalizeCompanyTerm(value);
-    return term.length<=4?(` ${normalized} `).includes(` $
+    return term.length<=4?(` ${normalized} `).includes(` ${term} `):normalized.includes(term);
+  });
+}

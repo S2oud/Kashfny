@@ -26,4 +26,4 @@ Official LinkedIn names directly inspected:
 
 Other LinkedIn URLs are deliberately omitted. Acronyms and former names are matching aids, not claims of universal LinkedIn spelling. Country coverage is currently UAE only; choosing another country disables this catalog.
 
-Final direc
+Final directory: 329 distinct choices.

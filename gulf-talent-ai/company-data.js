@@ -5011,4 +5011,263 @@ export const COMPANIES=[
     "id": "nasdaq-dubai",
     "name": "Nasdaq Dubai",
     "aliases": [
-    
+      "ناسداك دبي"
+    ],
+    "country": "UAE",
+    "region": "Dubai",
+    "kind": "company",
+    "sources": [
+      "https://www.nasdaqdubai.com/"
+    ],
+    "website": "https://www.nasdaqdubai.com/"
+  },
+  {
+    "id": "national-bank-of-fujairah",
+    "name": "National Bank of Fujairah",
+    "aliases": [
+      "NBF",
+      "بنك الفجيرة الوطني"
+    ],
+    "country": "UAE",
+    "region": "Fujairah",
+    "kind": "company",
+    "sources": [
+      "https://www.nbf.ae/"
+    ],
+    "website": "https://www.nbf.ae/"
+  },
+  {
+    "id": "national-bonds-corporation",
+    "name": "National Bonds Corporation",
+    "aliases": [
+      "National Bonds",
+      "الصكوك الوطنية"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.nationalbonds.ae/"
+    ],
+    "website": "https://www.nationalbonds.ae/"
+  },
+  {
+    "id": "nmc-healthcare",
+    "name": "NMC Healthcare",
+    "aliases": [
+      "NMC",
+      "ان ام سي"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.nmchealthcare.com/"
+    ],
+    "website": "https://www.nmchealthcare.com/"
+  },
+  {
+    "id": "noon",
+    "name": "noon",
+    "aliases": [
+      "نون"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.noon.com/"
+    ],
+    "website": "https://www.noon.com/"
+  },
+  {
+    "id": "parkin",
+    "name": "Parkin",
+    "aliases": [
+      "باركن"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.parkin.ae/"
+    ],
+    "website": "https://www.parkin.ae/"
+  },
+  {
+    "id": "presight",
+    "name": "Presight",
+    "aliases": [
+      "Presight AI",
+      "بريسايت"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.presight.ai/"
+    ],
+    "website": "https://www.presight.ai/"
+  },
+  {
+    "id": "purehealth",
+    "name": "PureHealth",
+    "aliases": [
+      "Pure Health",
+      "بيورهيلث",
+      "بيور هيلث"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.purehealth.ae/"
+    ],
+    "website": "https://www.purehealth.ae/"
+  },
+  {
+    "id": "rakbank",
+    "name": "RAKBANK",
+    "aliases": [
+      "National Bank of Ras Al Khaimah",
+      "بنك رأس الخيمة الوطني"
+    ],
+    "country": "UAE",
+    "region": "Ras Al Khaimah",
+    "kind": "company",
+    "sources": [
+      "https://www.rakbank.ae/"
+    ],
+    "website": "https://www.rakbank.ae/"
+  },
+  {
+    "id": "salik",
+    "name": "Salik",
+    "aliases": [
+      "سالك"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.salik.ae/"
+    ],
+    "website": "https://www.salik.ae/"
+  },
+  {
+    "id": "sanad-group",
+    "name": "Sanad Group",
+    "aliases": [
+      "Sanad",
+      "سند"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.sanad.ae/"
+    ],
+    "website": "https://www.sanad.ae/"
+  },
+  {
+    "id": "sharjah-islamic-bank",
+    "name": "Sharjah Islamic Bank",
+    "aliases": [
+      "SIB",
+      "مصرف الشارقة الإسلامي"
+    ],
+    "country": "UAE",
+    "region": "Sharjah",
+    "kind": "company",
+    "sources": [
+      "https://www.sib.ae/"
+    ],
+    "website": "https://www.sib.ae/"
+  },
+  {
+    "id": "space42",
+    "name": "Space42",
+    "aliases": [
+      "سبيس 42"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.space42.ai/"
+    ],
+    "website": "https://www.space42.ai/"
+  },
+  {
+    "id": "spinneys",
+    "name": "Spinneys",
+    "aliases": [
+      "سبينس"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.spinneys.com/"
+    ],
+    "website": "https://www.spinneys.com/"
+  },
+  {
+    "id": "strata-manufacturing",
+    "name": "Strata Manufacturing",
+    "aliases": [
+      "Strata",
+      "ستراتا"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.strata.ae/"
+    ],
+    "website": "https://www.strata.ae/"
+  },
+  {
+    "id": "talabat",
+    "name": "talabat",
+    "aliases": [
+      "طلبات"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.talabat.com/"
+    ],
+    "website": "https://www.talabat.com/"
+  },
+  {
+    "id": "tecom-group",
+    "name": "TECOM Group",
+    "aliases": [
+      "تيكوم"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.tecomgroup.ae/"
+    ],
+    "website": "https://www.tecomgroup.ae/"
+  },
+  {
+    "id": "union-coop",
+    "name": "Union Coop",
+    "aliases": [
+      "Union Cooperative",
+      "تعاونية الاتحاد"
+    ],
+    "country": "UAE",
+    "region": "UAE",
+    "kind": "company",
+    "sources": [
+      "https://www.unioncoop.ae/"
+    ],
+    "website": "https://www.unioncoop.ae/"
+  }
+];
