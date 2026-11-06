@@ -7,7 +7,8 @@ export const COMPANY_GROUPS=[
   {id:'mubadala',name:'Mubadala',parent:'mubadala-investment-company',members:['mubadala-energy'],source:'https://mubadalaenergy.com/who-we-are/'},
   {id:'taqa',name:'TAQA',parent:'abu-dhabi-national-energy-company',members:['taqa-distribution','taqa-water-solutions'],source:'https://www.taqa-ws.com/news/announcements/taqa-announces-new-unified-customer-facing-distribution-company-and-launches-new-brands-for-its-group-companies/'},
   {id:'emirates',name:'Emirates Group',parent:'emirates-group',members:['emirates-airline','dnata'],source:'https://www.emirates.com/ae/english/help/faq-topics/about-emirates/faq/what-is-the-emirates-group/'},
-  {id:'dubai-holding',name:'Dubai Holding',parent:'dubai-holding',members:['dubai-holding-asset-management','dubai-properties','nakheel','tecom-group'],source:'https://www.dubaiholding.com/en/our-business/our-companies/dubai-holding-real-estate'}
+  {id:'dubai-holding',name:'Dubai Holding',parent:'dubai-holding',members:['dubai-holding-asset-management','dubai-properties','nakheel','tecom-group','jumeirah-group'],source:'https://www.dubaiholding.com/en/our-business/our-companies'},
+  {id:'g42',name:'G42',parent:'g42',members:['core42'],source:'https://www.core42.ai/about'}
 ];
 const byId=new Map(COMPANIES.map(x=>[x.id,x]));
 export const groupFor=id=>COMPANY_GROUPS.find(g=>g.parent===id||g.members.includes(id));

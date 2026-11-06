@@ -32,7 +32,8 @@ function convert(r,provider,company){
   const text=short(r.text||((r.highlights||[]).join(" "))||r.content||r.summary,2500);
   const domain=new URL(source).hostname.replace(/^www\./,"");
   const knownDomains={ADIA:'adia.ae',ADNOC:'adnoc.ae',MUBADALA:'mubadala.com',G42:'g42.ai'};
-  const known=knownDomains[(company||'').toUpperCase()];
+  const website=validUrl(resolveCompany(company)?.website);
+  const known=knownDomains[(company||'').toUpperCase()]||(website?new URL(website).hostname.replace(/^www\./,''):null);
   const official=known?(domain===known||domain.endsWith('.'+known)):Boolean(company&&company.length>4&&domain.toLowerCase().split('.')[0]===company.toLowerCase().replace(/[^a-z0-9]/g,''));
   const phone=official?officePhone(text):null;
   return {id:source.toLowerCase(),name:title.split(/\s[-–—|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:/linkedin\.com\/in\//.test(source)?"profile":"source",emails:official?emails(text).filter(email=>email.endsWith("@"+domain)):[],phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null};
@@ -113,10 +114,13 @@ async function searchSingle(input,env,selectedOrganization=null){
   const results=[...map.values()].filter(x=>{
     const text=x.title+' '+x.excerpt;
     const evidence=affiliation(text,organization||{id:'custom:'+company.toLowerCase(),name:company,aliases:[]});
-    const companyMatch=Boolean(evidence);if(evidence){x.companyLabels=evidence.labels;x.branchUnspecified=evidence.branchUnspecified;x.matchedCompanyIds=[organization?.id||'custom:'+company.toLowerCase()];x.organization=evidence.labels.map(label=>label.name).join(' · ');}
+    const companyMatch=Boolean(evidence);if(evidence){x.companyLabels=evidence.labels;x.branchUnspecified=evidence.branchUnspecified;x.matchedCompanyIds=[organization?.id||'custom:'+company.toLowerCase()];x.organization=evidence.labels.map(label=>label.name).join(' · ');x.score+=evidence.branchUnspecified?-4:10;}
     const generic=/career guide|how to get a job|working at|\bvacanc|\bjob openings|\bjob listings|\bcareers\b|وظائف شاغرة|دليل التوظيف/i.test(x.title);
     const unrelated=/talent development|talent management|HR operations|learning and development|تطوير المواهب|إدارة المواهب|عمليات الموارد البشرية/i.test(x.title)&&!hiring.test(x.title);
-    return hiring.test(text)&&companyMatch&&!generic&&!unrelated&&(x.category==='profile'||hiring.test(x.title));
+    const url=new URL(x.source);
+    const jobOrArticle=/^(jobs|careers)\./i.test(url.hostname)||/\/(?:jobs?|careers?|vacancies|posts|pulse|feed|industry-recruitment-uae)(?:\/|$)|recruitment-(?:criteria|agencies)/i.test(url.pathname);
+    const officialBiography=x.confidence==='source-backed'&&/\/(?:leadership|people|team|management|biograph(?:y|ies))\/[^/]+/i.test(url.pathname)&&hiring.test(x.title);
+    return hiring.test(text)&&companyMatch&&!generic&&!unrelated&&!jobOrArticle&&(x.category==='profile'||officialBiography);
   }).sort((a,b)=>b.score-a.score).slice(0,40);
   return {query,organization:organization?{id:organization.id,name:organization.name,country:organization.country}:null,results,errors,providerStatus,sourceCount:results.length,returnedAt:new Date().toISOString(),warning:'Source-backed research leads, not verified employees. Check current employment and contact details in the linked sources.'};
 }
