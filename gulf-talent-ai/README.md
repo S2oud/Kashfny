@@ -51,3 +51,10 @@ The static interface stores history, saved cards, Worker URL and APP_TOKEN on yo
 
 ## Fix: "Variables cannot be added to a Worker that only has static assets"
 This means the existing Cloudflare deployment contains static files only. In **Workers & Pages → gulftalent → Settings → Builds**, ensure the GitHub repository is `S2oud/Kashfny`, branch is `main`, root directory is `gulf-talent-ai`, build command is blank, and deployment command is `npx wrangler deploy`. Retry deployment after saving. The repository contains `worker.js` and `wrangler.toml` (whose `main` points to that script). After deploying code successfully, add runtime secrets `EXA_API_KEY`, `TAVILY_API_KEY`, `APP_TOKEN` under **Settings → Variables and Secrets**; do not put secrets in Build variables. `OPENAI_API_KEY` remains optional. Check `https://gulftalent.saud3690.workers.dev/health` for a JSON status. A static HTML response or 404 means the code has not deployed correctly.
+
+## Daily usage protection
+Search and AI brief attempts share a server-enforced limit of 10 per day, resetting at midnight Asia/Dubai. Connection/usage checks do not consume attempts. A signed browser device token and Cloudflare-provided IP address (IPv6 /64) are both capped, so clearing browser data does not reset a network's allowance. Shared networks share the cap. Moving networks and clearing device identity together can still bypass device identification; a website cannot guarantee unique physical-device identity without a stronger account/access scheme.
+
+Counters live in a SQLite Durable Object; updates are atomic and survive Worker restarts/deployments. Unavailable quota storage blocks paid requests. Failed provider attempts still count. Browser-visible usage is returned by the server, not trusted from the browser. No raw IP address is stored: network keys are HMAC hashes. Day counters are deleted after the following day.
+
+Deploy worker.js, quota.js and wrangler.toml together with Wrangler. The v1-daily-quota migration provisions the DAILY_QUOTA binding. Preserve runtime API secrets. Run `node --test gulf-talent-ai/quota.test.mjs` from the repository root.

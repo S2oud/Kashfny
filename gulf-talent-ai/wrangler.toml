@@ -5,3 +5,11 @@ compatibility_date = "2026-11-06"
 
 [vars]
 ALLOWED_ORIGIN = "https://s2oud.github.io"
+
+[[durable_objects.bindings]]
+name = "DAILY_QUOTA"
+class_name = "DailyQuota"
+
+[[migrations]]
+tag = "v1-daily-quota"
+new_sqlite_classes = ["DailyQuota"]

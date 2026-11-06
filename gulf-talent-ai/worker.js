@@ -1,4 +1,6 @@
 // Cloudflare Worker for Gulf Talent AI. Store secrets in Cloudflare, never in GitHub Pages.
+import {quotaFor} from './quota.js';
+export {DailyQuota} from './quota.js';
 const JSON_HEADERS = {"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
 const allowedCountries = new Set(["UAE","Saudi Arabia","Qatar","Kuwait","Bahrain","Oman","All GCC"]);
 const short=(x,n)=>String(x||"").trim().slice(0,n);
@@ -71,22 +73,33 @@ async function brief(input,env){
 export default {async fetch(request,env){
   const origin=originFor(request,env);
   if(origin===null)return response({error:"Origin forbidden"},403);
-  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type","Access-Control-Max-Age":"3600"}});
+  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type,X-Device-Token","Access-Control-Max-Age":"3600"}});
   const url=new URL(request.url);
   if(url.pathname==="/"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI API",frontend:"https://s2oud.github.io/Kashfny/gulf-talent-ai/",health:"/health",message:"This is the private search API backend, not the website."},200,origin);
   if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
-  if(url.pathname==="/auth-check"&&request.method==="GET"){
+  if(["/auth-check","/usage"].includes(url.pathname)&&request.method==="GET"){
     if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret in Cloudflare Worker"},503,origin);
     if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"APP_TOKEN does not match"},401,origin);
-    return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
+    try {
+      const usage=await quotaFor(request,env);
+      return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,usage},200,origin);
+    } catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
   }
   if(request.method!=="POST"||!["/search","/brief"].includes(url.pathname))return response({error:"Not found"},404,origin);
   if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret"},503,origin);
   if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"Unauthorized"},401,origin);
+  let usage;
   try{
     const input=await request.json();
     if(JSON.stringify(input).length>14000)return response({error:"Payload too large"},413,origin);
+    try { usage=await quotaFor(request,env,true); }
+    catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
+    if(!usage.allowed){
+      const res=response({error:"Daily limit reached: 10 uses per device/network. Resets at midnight UAE time.",code:"DAILY_LIMIT_REACHED",usage},429,origin);
+      res.headers.set('Retry-After',String(Math.max(1,Math.ceil((Date.parse(usage.resetAt)-Date.now())/1000))));
+      return res;
+    }
     const out=url.pathname==="/search"?await search(input,env):await brief(input,env);
-    return response(out,out.status||200,origin);
-  }catch(e){return response({error:short(e.message||"Search failed",150)},502,origin)}
+    return response({...out,usage},out.status||200,origin);
+  }catch(e){return response({error:short(e.message||"Search failed",150),...(usage?{usage}:{})},502,origin)}
 }};
