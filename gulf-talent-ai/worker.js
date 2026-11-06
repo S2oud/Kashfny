@@ -73,6 +73,7 @@ export default {async fetch(request,env){
   if(origin===null)return response({error:"Origin forbidden"},403);
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type","Access-Control-Max-Age":"3600"}});
   const url=new URL(request.url);
+  if(url.pathname==="/"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI API",frontend:"https://s2oud.github.io/Kashfny/gulf-talent-ai/",health:"/health",message:"This is the private search API backend, not the website."},200,origin);
   if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
   if(url.pathname==="/auth-check"&&request.method==="GET"){
     if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret in Cloudflare Worker"},503,origin);
