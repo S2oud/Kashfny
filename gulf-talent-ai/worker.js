@@ -73,7 +73,12 @@ export default {async fetch(request,env){
   if(origin===null)return response({error:"Origin forbidden"},403);
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type","Access-Control-Max-Age":"3600"}});
   const url=new URL(request.url);
-  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
+  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
+  if(url.pathname==="/auth-check"&&request.method==="GET"){
+    if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret in Cloudflare Worker"},503,origin);
+    if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"APP_TOKEN does not match"},401,origin);
+    return response({ok:true,exa:!!env.EXA_API_KEY,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY},200,origin);
+  }
   if(request.method!=="POST"||!["/search","/brief"].includes(url.pathname))return response({error:"Not found"},404,origin);
   if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret"},503,origin);
   if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"Unauthorized"},401,origin);
