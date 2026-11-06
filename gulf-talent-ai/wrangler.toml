@@ -1,5 +1,6 @@
 name = "gulftalent"
 main = "./worker.js"
+workers_dev = true
 compatibility_date = "2026-11-06"
 
 [vars]
