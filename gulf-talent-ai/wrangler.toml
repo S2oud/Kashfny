@@ -1,0 +1,6 @@
+name = "gulf-talent-ai-api"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://s2oud.github.io"
