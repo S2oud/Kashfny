@@ -104,12 +104,13 @@ async function search(input,env){
       map.set(key,{...x,providers:[provider]});
     }
   });
-  const hiring=/talent acquisition|recruit(?:er|ment|ing)|human resources|\bHR\b|headhunt|executive search|استقطاب|توظيف|موارد بشرية/i;
+  const hiring=/talent acquisition|recruit(?:er|ment|ing)|headhunt|executive search|استقطاب|توظيف/i;
   const results=[...map.values()].filter(x=>{
     const text=x.title+' '+x.excerpt;
     const companyMatch=[company,aliases[company.toUpperCase()]].filter(Boolean).some(term=>text.toLowerCase().includes(term.toLowerCase()));
     const generic=/career guide|how to get a job|working at|\bvacanc|\bjob openings|\bjob listings|\bcareers\b|وظائف شاغرة|دليل التوظيف/i.test(x.title);
-    return hiring.test(text)&&companyMatch&&!generic&&(x.category==='profile'||hiring.test(x.title)||x.confidence==='source-backed');
+    const unrelated=/talent development|talent management|HR operations|learning and development|تطوير المواهب|إدارة المواهب|عمليات الموارد البشرية/i.test(x.title)&&!hiring.test(x.title);
+    return hiring.test(text)&&companyMatch&&!generic&&!unrelated&&(x.category==='profile'||hiring.test(x.title));
   }).sort((a,b)=>b.score-a.score).slice(0,40);
   return {query,results,errors,providerStatus,sourceCount:results.length,returnedAt:new Date().toISOString(),warning:'Source-backed research leads, not verified employees. Check current employment and contact details in the linked sources.'};
 }
