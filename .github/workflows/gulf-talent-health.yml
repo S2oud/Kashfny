@@ -22,8 +22,8 @@ jobs:
           url = "https://gulftalent.saud3690.workers.dev/health"
           outputs=[]
           for label,headers in (
-            ("direct",{"Accept":"application/json"}),
-            ("browser-origin",{"Origin":"https://s2oud.github.io","Accept":"application/json"})):
+            ("direct",{"Accept":"application/json","User-Agent":"GulfTalentAI-HealthCheck/1.0 (S2oud/Kashfny)"}),
+            ("browser-origin",{"Origin":"https://s2oud.github.io","Accept":"application/json","User-Agent":"GulfTalentAI-HealthCheck/1.0 (S2oud/Kashfny)"})):
             req=urllib.request.Request(url,headers=headers)
             try:
               with urllib.request.urlopen(req,timeout=20) as r:
