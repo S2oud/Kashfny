@@ -96,3 +96,14 @@ The existing 10/day device/network cap includes searches, AI briefs and contact 
 Store `FULLENRICH_API_KEY` as a runtime secret. The contact-provider selector lets the user explicitly choose GetProspect or FullEnrich without automatically querying both. FullEnrich starts exactly one asynchronous job for one LinkedIn profile and one field (`contact.work_emails` or `contact.phones`); it never requests personal email. A signed, 24-hour ticket binds that job to the original verified browser device. Authenticated `/enrich-status` checks that ticket and retrieves the existing job without consuming another daily use or starting another enrichment. The interface polls pending FullEnrich jobs at ten-second intervals for up to six checks, then leaves a manual continuation button. It retains completed details and pending tickets in history. Only deliverable business emails and mobile numbers are displayed; data is labelled as provider-reported. GetProspect and FullEnrich balances are checked through `/provider-check`, which is free and exposes no API credentials.
 
 Official FullEnrich documentation: https://docs.fullenrich.com/api/v2/contact/enrich/bulk/post , https://docs.fullenrich.com/api/v2/contact/enrich/bulk/get , https://docs.fullenrich.com/api/v2/account/credits/get .
+
+
+## Contact providers and hiring posts
+
+Optional server secrets `LUSHA_API_KEY` and `HUNTER_API_KEY` enable Lusha v3 work email/direct-mobile reveal and Hunter v2 verified work-email reveal. Hunter does not offer a phone button. One field is requested at a time; provider billing may include search charges even when nothing is found. A do-not-call flag blocks phone display. API keys never enter frontend assets.
+
+`POST /posts-search` accepts `keyword` (2–120 chars), `days` (`7`, `30`, `90`, `all`) and `sort` (`recent`, `relevance`). It consumes one daily attempt, combines public indexed LinkedIn post sources from Tavily/Exa, filters recruiting content and keyword terms, deduplicates source URLs, and optionally asks OpenAI to summarize supplied text in Arabic. AI cannot add source URLs or fabricate posts. Unknown dates are labelled and retained; full LinkedIn coverage and full text are not guaranteed. Excerpts are capped at 5,000 characters to keep the latest ten result snapshots within browser storage limits. Source links open the original posts.
+
+`node build-assets.mjs` copies only four explicit public frontend files into `.site-assets/app/`. Wrangler serves them at `https://gulftalent.saud3690.workers.dev/app/` as an alternative while GitHub Pages is delayed. The two hosting origins have independent browser history. Existing GitHub Pages history is preserved there.
+
+Official references: https://docs.lusha.com/openapi.json and https://hunter.io/api-documentation/v2.
