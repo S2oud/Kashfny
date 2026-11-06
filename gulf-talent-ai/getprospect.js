@@ -18,7 +18,7 @@ export async function getProspectBalance(env){
   return {configured:true,connected:true,emailCredits:Number(data.email_search?.available)||0,phoneCredits:Number(data.phone_search?.available)||0,walletUSD:Number(data.wallet?.balance)||0,resetAt:data.reset_at||null};
 }
 export function searchFilters(company,country,types){
-  const names=[company.searchName,company.name,...(company.aliases||[]).filter(a=>/^[A-Z][A-Z0-9& ]{1,12}$/.test(a))].filter(Boolean);
+  const names=(Array.isArray(company)?company:[company]).flatMap(c=>[c.searchName,c.name,...(c.aliases||[]).filter(a=>/^[A-Z][A-Z0-9& ]{1,12}$/.test(a))]).filter(Boolean);
   const titles=[];
   if(types.includes('talent-acquisition'))titles.push('Talent Acquisition');
   if(types.includes('hr-recruiting'))titles.push('Recruiter','Recruitment','Recruiting');
@@ -27,8 +27,8 @@ export function searchFilters(company,country,types){
 }
 export async function getProspectSearch(env,company,country,types){
   if(!env.GETPROSPECT_API_KEY)return [];
-  const j=await request(env,'/v2/people/search',searchFilters(company,country,types));
-  return (Array.isArray(j.data)?j.data:[]).map(p=>{
+  const people=[];for(let page=1;page<=4;page++){const j=await request(env,'/v2/people/search',{...searchFilters(company,country,types),page});const rows=Array.isArray(j.data)?j.data:[];people.push(...rows);if(rows.length<25)break}
+  return people.map(p=>{
     const url=profileURL(p.linkedin_url);if(!url)return null;
     const position=p.primary_position||{},name=clean(p.full_name||[p.first_name,p.last_name].filter(Boolean).join(' '),90),organization=clean(position.company?.name),role=clean(position.job_title||position.normalized_job_title);
     if(!name||!role||!organization)return null;

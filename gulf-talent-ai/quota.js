@@ -21,7 +21,7 @@ export function networkIdentity(ip) {
   return full.slice(0,4).map(x => parseInt(x,16).toString(16)).join(':') + '::/64';
 }
 function signingSecret(env) {
-  const secret=env.DEVICE_SIGNING_KEY||env.EXA_API_KEY||env.TAVILY_API_KEY||env.OPENAI_API_KEY||env.GETPROSPECT_API_KEY||env.FULLENRICH_API_KEY;
+  const secret=env.DEVICE_SIGNING_KEY||env.TAVILY_API_KEY||env.OPENAI_API_KEY||env.GETPROSPECT_API_KEY||env.FULLENRICH_API_KEY;
   if(!secret)throw Error('Missing server-only signing secret');
   return secret;
 }

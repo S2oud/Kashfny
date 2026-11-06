@@ -40,8 +40,8 @@ export function affiliation(text,company){
 }
 export function mergeCompanyResults(batches){
   const map=new Map();
-  for(const batch of batches)for(const result of batch.results||[]){const key=result.source.toLowerCase(),previous=map.get(key);if(!previous){map.set(key,{...result,companyLabels:[...(result.companyLabels||[])],matchedCompanyIds:[...(result.matchedCompanyIds||[])]});continue}
-    previous.providers=[...new Set([...(previous.providers||[]),...(result.providers||[])])];
+  for(const batch of batches)for(const result of batch.results||[]){const key=(result.id||result.source).toLowerCase(),previous=map.get(key);if(!previous){map.set(key,{...result,companyLabels:[...(result.companyLabels||[])],matchedCompanyIds:[...(result.matchedCompanyIds||[])]});continue}
+    previous.providers=[...new Set([...(previous.providers||[]),...(result.providers||[])])];previous.emails=[...new Set([...(previous.emails||[]),...(result.emails||[])])];previous.providerEvidence=[...new Map([...(previous.providerEvidence||[]),...(result.providerEvidence||[])].map(e=>[e.provider,e])).values()];
     previous.matchedCompanyIds=[...new Set([...previous.matchedCompanyIds,...(result.matchedCompanyIds||[])])];
     previous.companyLabels=[...new Map([...previous.companyLabels,...(result.companyLabels||[])].map(x=>[x.id,x])).values()];
     previous.branchUnspecified=previous.branchUnspecified&&result.branchUnspecified;
@@ -49,7 +49,7 @@ export function mergeCompanyResults(batches){
     if((result.excerpt||'').length>(previous.excerpt||'').length)previous.excerpt=result.excerpt;
   }
   // Round-robin prevents one large company from crowding the other selections out.
-  const ordered=[],seen=new Set();const rows=batches.map(b=>(b.results||[]).map(r=>r.source.toLowerCase()));
-  for(let i=0;i<40;i++)for(const row of rows){const key=row[i];if(key&&!seen.has(key)){seen.add(key);ordered.push(map.get(key))}}
-  return ordered.slice(0,100);
+  const ordered=[],seen=new Set();const rows=batches.map(b=>(b.results||[]).map(r=>(r.id||r.source).toLowerCase()));
+  for(let i=0;i<500;i++)for(const row of rows){const key=row[i];if(key&&!seen.has(key)){seen.add(key);ordered.push(map.get(key))}}
+  return ordered.slice(0,1000);
 }

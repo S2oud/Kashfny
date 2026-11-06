@@ -1,118 +1,12 @@
-# Gulf Talent AI — GCC people research
+# Gulf Talent AI
+Arabic-first recruiting research. Deploy from this directory with `npx wrangler deploy`; public app is `/app/`.
 
-A responsive, Arabic/English personal research dashboard. The UI provides company, professional role and country filters; source-based results; saving and search history in this browser; CSV export; and optional AI briefs via a separately billed OpenAI API.
+Runtime secrets: APP_TOKEN, TAVILY_API_KEY, OPENAI_API_KEY, GETPROSPECT_API_KEY, FULLENRICH_API_KEY, LUSHA_API_KEY, HUNTER_API_KEY. ALLOWED_ORIGIN is a comma-separated list of exact origins. Never commit credentials.
 
-## Live URL
-When this folder is published from the repository root via GitHub Pages, browse:
-`https://s2oud.github.io/Kashfny/gulf-talent-ai/`
+People search combines the four directory providers with Tavily and grounded OpenAI web search. Subscription permissions, provider credits and bounded pagination apply. Hunter Free permits ten results per domain. Duplicate LinkedIn profiles retain all contributing providers. No profile URL is invented. Contact reveals are separate and field-specific.
 
-**Important:** GitHub Pages serves only the static website. Live research will not work until you deploy the separately provided Cloudflare Worker and configure your own search provider account and secrets. No real-person contact results are hardcoded or fabricated. Do not interpret search excerpts as verified identity or verified direct contact details.
+Posts support five comma-separated phrases, any/all matching, up to eight Tavily queries and two actual OpenAI web searches. Up to 200 relevant public LinkedIn posts, source labels, local pagination and filtering. Up to 96 AI summaries. Known source dates sort first; missing dates are never guessed. Full LinkedIn coverage and full text are not guaranteed.
 
-## Free deployment — static site
-This website lives in `gulf-talent-ai/index.html` within the existing public S2oud/Kashfny repository. It does not replace or modify the existing Kashfny website. GitHub Pages must be enabled and publishing the main branch **root** for this folder to resolve. If Pages is configured for a different branch or `/docs`, change deployment settings in GitHub.
+Last ten people and post searches with result snapshots are stored in IndexedDB. Atomic Durable Objects enforce ten uses per signed device/trusted network, resetting at Dubai midnight. Connection checks, history, local sorting and pagination are free. Browser resets cannot reset the network quota. No anonymous device system prevents every network/identity change.
 
-## Cloudflare Worker setup
-1. Create or log into [Cloudflare](https://dash.cloudflare.com/) and create a Worker.
-2. Connect GitHub repository `S2oud/Kashfny` under Worker Settings → Builds. Set the root directory to `gulf-talent-ai`, production branch `main`, leave build command empty, and use deploy command `npx wrangler deploy`. The included `wrangler.toml` sets `name = "gulftalent"` and `main = "./worker.js"`, ensuring the deployment is a code Worker rather than static-assets-only. If your Worker is named differently, its name must match the Wrangler name.
-3. Set the environment variable `ALLOWED_ORIGIN` to exactly `https://s2oud.github.io` (this is the **origin**, not the full path), and optionally `http://localhost:8000` for local testing; **do not** set wildcard `*`.
-4. In Cloudflare Workers → Settings → Variables/Secrets, add `EXA_API_KEY` from your Exa account and optionally `TAVILY_API_KEY` from Tavily.
-5. Add `APP_TOKEN` as a long random secret (at least 32 random bytes). It must match what you enter in the website's API Settings. The token is saved in browser localStorage in this MVP — safe enough only for a trusted personal browser; upgrade to Cloudflare Access for stronger authentication before broader use.
-6. Optional: add `OPENAI_API_KEY` for AI briefs (separately billed by OpenAI; your ChatGPT subscription is **not** an API key) and optional `OPENAI_MODEL` to choose a currently supported model.
-7. Deploy the Worker. Open the site, select API settings and enter your Worker URL and APP_TOKEN. Click Test connection. Then run searches.
-
-Example `wrangler.toml`:
-```toml
-name = "gulftalent"
-main = "./worker.js"
-compatibility_date = "2026-11-01"
-
-[vars]
-ALLOWED_ORIGIN = "https://s2oud.github.io"
-```
-Command examples for secrets:
-```sh
-npx wrangler secret put EXA_API_KEY
-npx wrangler secret put APP_TOKEN
-npx wrangler secret put TAVILY_API_KEY
-npx wrangler secret put OPENAI_API_KEY
-```
-Use only the ones relevant to your accounts.
-
-## Accuracy and safety
-- Search uses Exa's person/company category and optional Tavily web search. It returns potential leads rather than a verified employee database.
-- Contact emails are extracted from public search result snippets, and personal free-mail providers are excluded; a detected email is **not** independently verified.
-- Phone detection is limited to numbers labeled as company/office on an apparent official-domain result; these are **not** direct employee phone numbers. No guessed emails, personal numbers or LinkedIn scraping.
-- Some sources forbid scraping or storing personal contact information. Follow each provider's terms and applicable privacy law even for private use.
-- Search API free credits are limited and may be exhausted. A paid data provider is usually needed for Lusha-level verified direct work emails and phones.
-- No scheduled crawler or automated email sending in this MVP.
-
-## Technical notes
-The static interface stores history, saved cards, Worker URL and APP_TOKEN on your own device. Its backend is `worker.js` and requires deployment on Cloudflare Workers. API keys must **never** be committed to GitHub or exposed in frontend JavaScript.
-
-## Fix: "Variables cannot be added to a Worker that only has static assets"
-This means the existing Cloudflare deployment contains static files only. In **Workers & Pages → gulftalent → Settings → Builds**, ensure the GitHub repository is `S2oud/Kashfny`, branch is `main`, root directory is `gulf-talent-ai`, build command is blank, and deployment command is `npx wrangler deploy`. Retry deployment after saving. The repository contains `worker.js` and `wrangler.toml` (whose `main` points to that script). After deploying code successfully, add runtime secrets `EXA_API_KEY`, `TAVILY_API_KEY`, `APP_TOKEN` under **Settings → Variables and Secrets**; do not put secrets in Build variables. `OPENAI_API_KEY` remains optional. Check `https://gulftalent.saud3690.workers.dev/health` for a JSON status. A static HTML response or 404 means the code has not deployed correctly.
-
-## Daily usage protection
-Search and AI brief attempts share a server-enforced limit of 10 per day, resetting at midnight Asia/Dubai. Connection/usage checks do not consume attempts. A signed browser device token and Cloudflare-provided IP address (IPv6 /64) are both capped, so clearing browser data does not reset a network's allowance. Shared networks share the cap. Moving networks and clearing device identity together can still bypass device identification; a website cannot guarantee unique physical-device identity without a stronger account/access scheme.
-
-Counters live in a SQLite Durable Object; updates are atomic and survive Worker restarts/deployments. Unavailable quota storage blocks paid requests. Failed provider attempts still count. Browser-visible usage is returned by the server, not trusted from the browser. No raw IP address is stored: network keys are HMAC hashes. Day counters are deleted after the following day.
-
-Deploy worker.js, quota.js and wrangler.toml together with Wrangler. The v1-daily-quota migration provisions the DAILY_QUOTA binding. Preserve runtime API secrets. Run `node --test gulf-talent-ai/quota.test.mjs` from the repository root.
-
-## Recruiting-only search
-The interface defaults to Arabic (explicit saved language preferences remain respected). Choose a company, country and one or more recruiting teams: talent acquisition, HR/recruiting or executive search. Arbitrary job-title and company-directory searches are rejected by the backend.
-
-A search runs bounded parallel requests: Exa (18), Tavily broad (10), Tavily professional profiles (10), and OpenAI web search (up to 2 tool calls, 12 sourced results). Sources are merged by canonical URL, generic career pages and unrelated employees are filtered, and relevant recruiting profiles are prioritized. AI-generated results are accepted only when their URLs were actually returned/cited by the web-search tool. This is source grounding, not independent employment verification. Failures from one provider are shown without discarding other results. OpenAI requires available API credits.
-
-The device signature uses a server-only key: DEVICE_SIGNING_KEY when supplied, otherwise an existing provider secret. Never use the browser-visible APP_TOKEN as a device-signing secret. Provider key rotation may invalidate existing device identities, while daily network counters also depend on the signing key.
-
-## Company suggestions, appearance and history
-The shared company-directory.js resolver uses the curated company-data.js catalog of 329 UAE organizations. The catalog starts with ministries/federal entities and government departments, then adds UAE corporate employers. Names display in English; Arabic aliases and acronyms are searchable. ADIA/adia resolve identically in both the browser and Worker. Exact identity resolution is country-scoped and rejects stale selected IDs. See COMPANY_SOURCES.md for sources, review date and naming limitations. Suggestions are local and never consume search quota. Other countries currently accept free-text names without this UAE catalog.
-
-All three recruiting categories are checked on a new search by default. Dark mode is the default and can be switched to light mode; the choice is stored in this browser. The header export button was removed; results export remains available.
-
-The latest 10 searches now retain up to 40 returned contact/source cards per search in browser storage. “Show recruiting contacts” restores the snapshot and filters without a network search or usage charge. Existing history entries without snapshots are clearly marked unavailable rather than silently re-querying. Records are local to this browser; clearing browser data clears saved history.
-
-Validation: `node --test gulf-talent-ai/quota.test.mjs gulf-talent-ai/search.test.mjs gulf-talent-ai/directory-history.test.mjs`.
-
-
-## Multi-company recruiting search
-The picker accepts up to 10 companies per request, including a group's general name and its catalogued subsidiaries. A bounded batch costs one daily attempt. The server validates the selection limit before consuming quota, queries each company, tolerates partial provider failures, deduplicates canonical source URLs, and interleaves results up to 100 total. The UI filters these results by selected company and saves all 100 results with the last ten search snapshots. AI briefs send only 12 compact source excerpts.
-
-`company-groups.js` holds sourced search families for ADNOC, Mubadala, TAQA, Emirates Group, Dubai Holding and G42. These are search families, not claims of 100% legal ownership. Parent-only source mentions are labelled with an unspecified branch; a selected branch is never asserted solely from the query. Explicit sibling mentions are excluded for a branch selection. Family definitions have source URLs; Dubai Holding's asset/TECOM relationship is additionally documented at https://www.dubaiholding.com/en/our-business/our-companies/dubai-holding-asset-management .
-
-Run all checks: `node --test gulf-talent-ai/*.test.mjs` (or explicitly list the four test files in PowerShell).
-
-
-## GetProspect contact data
-Store `GETPROSPECT_API_KEY` as a Cloudflare runtime secret. No provider key belongs in the static app. Recruiting searches also query GetProspect's structured People Search with email/phone enrichment explicitly disabled. Each company receives at most one page of 25 preview profiles, merged with other source providers.
-
-Authenticated `GET /provider-check` checks the account balance without contact reveals or daily quota consumption. `POST /enrich` accepts a public LinkedIn person URL and exactly one `reveal` value (`email` or `phone`). It reserves one existing daily use before a provider call. Only revealed, unmasked business emails and provider-reported numbers are returned; a mismatched profile is rejected. Email lookup may take over a minute. Pending responses require a deliberate follow-up; there are no automatic paid retries. Successful/not-found outcomes are retained in the browser's current results, saved leads and matching history snapshots. Provider evidence is labelled separately from independently verified identity/employment.
-
-The existing 10/day device/network cap includes searches, AI briefs and contact lookups. Provider credits/wallet limits are separate. This integration does not enable auto-top-up or subscribe the account to a paid plan. GetProspect docs: https://getprospect.com/api-docs/people-search , https://getprospect.com/api-docs/people-enrich , https://getprospect.com/api-docs/credits .
-
-
-## FullEnrich asynchronous contact lookup
-Store `FULLENRICH_API_KEY` as a runtime secret. The contact-provider selector lets the user explicitly choose GetProspect or FullEnrich without automatically querying both. FullEnrich starts exactly one asynchronous job for one LinkedIn profile and one field (`contact.work_emails` or `contact.phones`); it never requests personal email. A signed, 24-hour ticket binds that job to the original verified browser device. Authenticated `/enrich-status` checks that ticket and retrieves the existing job without consuming another daily use or starting another enrichment. The interface polls pending FullEnrich jobs at ten-second intervals for up to six checks, then leaves a manual continuation button. It retains completed details and pending tickets in history. Only deliverable business emails and mobile numbers are displayed; data is labelled as provider-reported. GetProspect and FullEnrich balances are checked through `/provider-check`, which is free and exposes no API credentials.
-
-Official FullEnrich documentation: https://docs.fullenrich.com/api/v2/contact/enrich/bulk/post , https://docs.fullenrich.com/api/v2/contact/enrich/bulk/get , https://docs.fullenrich.com/api/v2/account/credits/get .
-
-
-## Contact providers and hiring posts
-
-Optional server secrets `LUSHA_API_KEY` and `HUNTER_API_KEY` enable Lusha v3 work email/direct-mobile reveal and Hunter v2 verified work-email reveal. Hunter does not offer a phone button. One field is requested at a time; provider billing may include search charges even when nothing is found. A do-not-call flag blocks phone display. API keys never enter frontend assets.
-
-`POST /posts-search` accepts `keyword` (2–120 chars), `days` (`7`, `30`, `90`, `all`) and `sort` (`recent`, `relevance`). It consumes one daily attempt, combines public indexed LinkedIn post sources from Tavily/Exa, filters recruiting content and keyword terms, deduplicates source URLs, and optionally asks OpenAI to summarize supplied text in Arabic. AI cannot add source URLs or fabricate posts. Unknown dates are labelled and retained; full LinkedIn coverage and full text are not guaranteed. Excerpts are capped at 5,000 characters to keep the latest ten result snapshots within browser storage limits. Source links open the original posts.
-
-`node build-assets.mjs` copies only six explicit public frontend files into `.site-assets/app/`. Wrangler serves them at `https://gulftalent.saud3690.workers.dev/app/` as an alternative while GitHub Pages is delayed. The two hosting origins have independent browser history. Existing GitHub Pages history is preserved there.
-
-Official references: https://docs.lusha.com/openapi.json and https://hunter.io/api-documentation/v2.
-
-
-### Expanded post search and multiple phrases
-
-Separate up to five phrases with English/Arabic commas, semicolons, a pipe or newlines. `match: any` accepts any phrase (default); `match: all` requires every phrase. Spaces remain inside a phrase. `UAE National` includes plural and common Emirati/Emiratization spelling variants; matching is against source text, with no inferred nationality of individual people.
-
-The query planner makes at most eight Tavily queries and two Exa queries, combining post/feed paths and recruiting intent variants. A single daily attempt covers the bounded expanded search. Search-provider usage is higher than the original single query. Results merge by LinkedIn activity identifier, retain provider provenance, and return up to100 matching posts with coverage counts. The frontend displays12 at a time; Show more is local and free. OpenAI summarizes up to48 posts in parallel bounded batches; others retain labelled source excerpts. No claim of complete LinkedIn coverage is made.
-
-Post results and the last ten searches use IndexedDB instead of localStorage, allowing larger result sets without crowding out contact history. Existing post history migrates on first load. The mobile layout uses one card per row, restrained headings, larger controls, compact matched-keyword chips, expandable text and a full-width source button.
+Tests: `node --test gulf-talent-ai/*.test.mjs` from repository root. `/health` reports configuration flags; authenticated `/provider-check` checks connectivity without contact reveals.
