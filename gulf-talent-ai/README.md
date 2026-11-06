@@ -65,3 +65,12 @@ The interface defaults to Arabic (explicit saved language preferences remain res
 A search runs bounded parallel requests: Exa (18), Tavily broad (10), Tavily professional profiles (10), and OpenAI web search (up to 2 tool calls, 12 sourced results). Sources are merged by canonical URL, generic career pages and unrelated employees are filtered, and relevant recruiting profiles are prioritized. AI-generated results are accepted only when their URLs were actually returned/cited by the web-search tool. This is source grounding, not independent employment verification. Failures from one provider are shown without discarding other results. OpenAI requires available API credits.
 
 The device signature uses a server-only key: DEVICE_SIGNING_KEY when supplied, otherwise an existing provider secret. Never use the browser-visible APP_TOKEN as a device-signing secret. Provider key rotation may invalidate existing device identities, while daily network counters also depend on the signing key.
+
+## Company suggestions, appearance and history
+The shared company-directory.js resolver uses the curated company-data.js catalog of 329 UAE organizations. The catalog starts with ministries/federal entities and government departments, then adds UAE corporate employers. Names display in English; Arabic aliases and acronyms are searchable. ADIA/adia resolve identically in both the browser and Worker. Exact identity resolution is country-scoped and rejects stale selected IDs. See COMPANY_SOURCES.md for sources, review date and naming limitations. Suggestions are local and never consume search quota. Other countries currently accept free-text names without this UAE catalog.
+
+All three recruiting categories are checked on a new search by default. Dark mode is the default and can be switched to light mode; the choice is stored in this browser. The header export button was removed; results export remains available.
+
+The latest 10 searches now retain up to 40 returned contact/source cards per search in browser storage. “Show recruiting contacts” restores the snapshot and filters without a network search or usage charge. Existing history entries without snapshots are clearly marked unavailable rather than silently re-querying. Records are local to this browser; clearing browser data clears saved history.
+
+Validation: `node --test gulf-talent-ai/quota.test.mjs gulf-talent-ai/search.test.mjs gulf-talent-ai/directory-history.test.mjs`.

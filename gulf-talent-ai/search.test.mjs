@@ -23,3 +23,20 @@ test('arbitrary roles, company searches and missing company cannot trigger provi
   try{for(const body of [{company:'ADIA',role:'Software Engineer',category:'companies'},{company:'ADIA',types:['software-engineering']},{company:'',types:['hr-recruiting']}])assert.equal((await request(body)).status,400)}finally{globalThis.fetch=original}
 });
 test('canonical profile source strips tracking and country-specific duplicates',()=>assert.equal(canonicalSource('https://ae.linkedin.com/in/test/?trk=foo#x'),'https://www.linkedin.com/in/test'));
+
+test('backend canonicalizes lowercase ADIA and Arabic ministry aliases before searching',async()=>{
+  const original=globalThis.fetch,queries=[];
+  globalThis.fetch=async(url,init)=>{
+    const body=JSON.parse(init.body);if(body.query)queries.push(body.query);
+    return String(url).includes('openai.com')?Response.json({output:[{content:[{type:'output_text',text:'{"results":[]}'}]}]}):Response.json({results:[]});
+  };
+  try {
+    const filters={country:'UAE',types:['talent-acquisition']};
+    const lower=await(await request({...filters,company:'adia'})).json();
+    const upper=await(await request({...filters,company:'ADIA'})).json();
+    const ministry=await(await request({...filters,company:'وزارة الداخلية'})).json();
+    assert.equal(lower.organization.id,upper.organization.id);assert.equal(lower.query,upper.query);
+    assert.match(lower.query,/Abu Dhabi Investment Authority/);
+    assert.equal(ministry.organization.name,'Ministry of Interior UAE');assert.match(ministry.query,/Ministry of Interior UAE/);
+    assert.ok(queries.every(query=>!query.includes('undefined')));
+  } fi

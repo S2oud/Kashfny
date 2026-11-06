@@ -1,5 +1,6 @@
 // Cloudflare Worker for Gulf Talent AI. Store secrets in Cloudflare, never in GitHub Pages.
 import {quotaFor} from './quota.js';
+import {resolveCompany,organizationQuery,matchesOrganization} from './company-directory.js';
 export {DailyQuota} from './quota.js';
 const JSON_HEADERS = {"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
 const allowedCountries = new Set(["UAE","Saudi Arabia","Qatar","Kuwait","Bahrain","Oman","All GCC"]);
@@ -77,7 +78,9 @@ async function openaiSearch(env,company,role,country,category,candidates=[]){
   return (Array.isArray(parsed.results)?parsed.results:[]).filter(x=>sources.has(canonicalSource(x.url))).slice(0,12);
 }
 async function search(input,env){
-  const company=short(input.company,90),country=short(input.country,35)||'UAE',category='people';
+  const enteredCompany=short(input.company,200),country=short(input.country,35)||'UAE',category='people';
+  const organization=resolveCompany(enteredCompany,country,short(input.companyId,200));
+  const company=organization?.name||enteredCompany;
   const options={'talent-acquisition':'Talent Acquisition','hr-recruiting':'HR Recruiting Recruitment Recruiter','executive-search':'Executive Search Headhunter'};
   const types=Array.isArray(input.types)?[...new Set(input.types)]:[];
   if(!types.length||types.some(type=>!Object.hasOwn(options,type)))return {error:'Choose valid recruiting teams',status:400};
@@ -86,7 +89,7 @@ async function search(input,env){
   if(!company)return {error:'Enter a company name',status:400};
   if(!env.EXA_API_KEY&&!env.TAVILY_API_KEY&&!env.OPENAI_API_KEY)return {error:'Configure a search provider on Cloudflare',status:503};
   const aliases={ADIA:'Abu Dhabi Investment Authority',ADNOC:'Abu Dhabi National Oil Company',G42:'Group 42'};
-  const target=company+(aliases[company.toUpperCase()]?' '+aliases[company.toUpperCase()]:'');
+  const target=organizationQuery(organization,company+(aliases[company.toUpperCase()]?' '+aliases[company.toUpperCase()]:''));
   const job=role||'Talent Acquisition Recruitment HR';
   const query=category==='companies'?`${target||job} companies operating in ${country}`:`${target} ${job} ${country} professional profile`;
   const tasks=[{provider:'Exa',run:()=>exa(env,query,18,category)},
@@ -107,12 +110,12 @@ async function search(input,env){
   const hiring=/talent acquisition|recruit(?:er|ment|ing)|headhunt|executive search|استقطاب|توظيف/i;
   const results=[...map.values()].filter(x=>{
     const text=x.title+' '+x.excerpt;
-    const companyMatch=[company,aliases[company.toUpperCase()]].filter(Boolean).some(term=>text.toLowerCase().includes(term.toLowerCase()));
+    const companyMatch=matchesOrganization(text,organization,company)||Boolean(aliases[company.toUpperCase()]&&text.toLowerCase().includes(aliases[company.toUpperCase()].toLowerCase()));
     const generic=/career guide|how to get a job|working at|\bvacanc|\bjob openings|\bjob listings|\bcareers\b|وظائف شاغرة|دليل التوظيف/i.test(x.title);
     const unrelated=/talent development|talent management|HR operations|learning and development|تطوير المواهب|إدارة المواهب|عمليات الموارد البشرية/i.test(x.title)&&!hiring.test(x.title);
     return hiring.test(text)&&companyMatch&&!generic&&!unrelated&&(x.category==='profile'||hiring.test(x.title));
   }).sort((a,b)=>b.score-a.score).slice(0,40);
-  return {query,results,errors,providerStatus,sourceCount:results.length,returnedAt:new Date().toISOString(),warning:'Source-backed research leads, not verified employees. Check current employment and contact details in the linked sources.'};
+  return {query,organization:organization?{id:organization.id,name:organization.name,country:organization.country}:null,results,errors,providerStatus,sourceCount:results.length,returnedAt:new Date().toISOString(),warning:'Source-backed research leads, not verified employees. Check current employment and contact details in the linked sources.'};
 }
 async function brief(input,env){
   if(!env.OPENAI_API_KEY)return {error:"Configure OPENAI_API_KEY server secret to enable AI brief. ChatGPT plan does not supply API access.",status:503};
