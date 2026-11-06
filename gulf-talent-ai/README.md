@@ -104,6 +104,15 @@ Optional server secrets `LUSHA_API_KEY` and `HUNTER_API_KEY` enable Lusha v3 wor
 
 `POST /posts-search` accepts `keyword` (2–120 chars), `days` (`7`, `30`, `90`, `all`) and `sort` (`recent`, `relevance`). It consumes one daily attempt, combines public indexed LinkedIn post sources from Tavily/Exa, filters recruiting content and keyword terms, deduplicates source URLs, and optionally asks OpenAI to summarize supplied text in Arabic. AI cannot add source URLs or fabricate posts. Unknown dates are labelled and retained; full LinkedIn coverage and full text are not guaranteed. Excerpts are capped at 5,000 characters to keep the latest ten result snapshots within browser storage limits. Source links open the original posts.
 
-`node build-assets.mjs` copies only five explicit public frontend files into `.site-assets/app/`. Wrangler serves them at `https://gulftalent.saud3690.workers.dev/app/` as an alternative while GitHub Pages is delayed. The two hosting origins have independent browser history. Existing GitHub Pages history is preserved there.
+`node build-assets.mjs` copies only six explicit public frontend files into `.site-assets/app/`. Wrangler serves them at `https://gulftalent.saud3690.workers.dev/app/` as an alternative while GitHub Pages is delayed. The two hosting origins have independent browser history. Existing GitHub Pages history is preserved there.
 
 Official references: https://docs.lusha.com/openapi.json and https://hunter.io/api-documentation/v2.
+
+
+### Expanded post search and multiple phrases
+
+Separate up to five phrases with English/Arabic commas, semicolons, a pipe or newlines. `match: any` accepts any phrase (default); `match: all` requires every phrase. Spaces remain inside a phrase. `UAE National` includes plural and common Emirati/Emiratization spelling variants; matching is against source text, with no inferred nationality of individual people.
+
+The query planner makes at most eight Tavily queries and two Exa queries, combining post/feed paths and recruiting intent variants. A single daily attempt covers the bounded expanded search. Search-provider usage is higher than the original single query. Results merge by LinkedIn activity identifier, retain provider provenance, and return up to100 matching posts with coverage counts. The frontend displays12 at a time; Show more is local and free. OpenAI summarizes up to48 posts in parallel bounded batches; others retain labelled source excerpts. No claim of complete LinkedIn coverage is made.
+
+Post results and the last ten searches use IndexedDB instead of localStorage, allowing larger result sets without crowding out contact history. Existing post history migrates on first load. The mobile layout uses one card per row, restrained headings, larger controls, compact matched-keyword chips, expandable text and a full-width source button.
