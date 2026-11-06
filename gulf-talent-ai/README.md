@@ -58,3 +58,10 @@ Search and AI brief attempts share a server-enforced limit of 10 per day, resett
 Counters live in a SQLite Durable Object; updates are atomic and survive Worker restarts/deployments. Unavailable quota storage blocks paid requests. Failed provider attempts still count. Browser-visible usage is returned by the server, not trusted from the browser. No raw IP address is stored: network keys are HMAC hashes. Day counters are deleted after the following day.
 
 Deploy worker.js, quota.js and wrangler.toml together with Wrangler. The v1-daily-quota migration provisions the DAILY_QUOTA binding. Preserve runtime API secrets. Run `node --test gulf-talent-ai/quota.test.mjs` from the repository root.
+
+## Recruiting-only search
+The interface defaults to Arabic (explicit saved language preferences remain respected). Choose a company, country and one or more recruiting teams: talent acquisition, HR/recruiting or executive search. Arbitrary job-title and company-directory searches are rejected by the backend.
+
+A search runs bounded parallel requests: Exa (18), Tavily broad (10), Tavily professional profiles (10), and OpenAI web search (up to 2 tool calls, 12 sourced results). Sources are merged by canonical URL, generic career pages and unrelated employees are filtered, and relevant recruiting profiles are prioritized. AI-generated results are accepted only when their URLs were actually returned/cited by the web-search tool. This is source grounding, not independent employment verification. Failures from one provider are shown without discarding other results. OpenAI requires available API credits.
+
+The device signature uses a server-only key: DEVICE_SIGNING_KEY when supplied, otherwise an existing provider secret. Never use the browser-visible APP_TOKEN as a device-signing secret. Provider key rotation may invalidate existing device identities, while daily network counters also depend on the signing key.

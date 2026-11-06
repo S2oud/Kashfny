@@ -10,7 +10,7 @@ function fixture() {
   // CREATE TABLE must execute immediately, as Cloudflare sql.exec does.
   ctx.storage.sql.exec=(query,...args)=>{const rows=db.prepare(query).all(...args);return {toArray:()=>rows}};
   let object=new DailyQuota(ctx);
-  const env={APP_TOKEN:'test-only-secret',ALLOWED_ORIGIN:'https://s2oud.github.io',DAILY_QUOTA:{idFromName:name=>name,get:()=>({fetch:(url,init)=>object.fetch(new Request(url,init))})}};
+  const env={APP_TOKEN:'test-only-secret',DEVICE_SIGNING_KEY:'server-only-signing-secret',ALLOWED_ORIGIN:'https://s2oud.github.io',DAILY_QUOTA:{idFromName:name=>name,get:()=>({fetch:(url,init)=>object.fetch(new Request(url,init))})}};
   const request=(path='/usage',opts={})=>worker.fetch(new Request('https://example.test'+path,{method:opts.consume?'POST':'GET',headers:{Authorization:'Bearer '+(opts.auth||env.APP_TOKEN),'CF-Connecting-IP':opts.ip||'192.0.2.10',...(opts.token?{'X-Device-Token':opts.token}:{}),...opts.headers},...(opts.consume?{body:JSON.stringify({country:'UAE'})}:{})}),env);
   return {env,request,restart(){object=new DailyQuota(ctx)}};
 }

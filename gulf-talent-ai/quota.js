@@ -20,17 +20,22 @@ export function networkIdentity(ip) {
   const full = parts.length === 2 ? [...left, ...Array(Math.max(0,8-left.length-right.length)).fill('0'), ...right] : left;
   return full.slice(0,4).map(x => parseInt(x,16).toString(16)).join(':') + '::/64';
 }
+function signingSecret(env) {
+  const secret=env.DEVICE_SIGNING_KEY||env.EXA_API_KEY||env.TAVILY_API_KEY||env.OPENAI_API_KEY;
+  if(!secret)throw Error('Missing server-only signing secret');
+  return secret;
+}
 async function deviceIdentity(request, env) {
   const token = request.headers.get('X-Device-Token') || '';
   const [id, signature] = token.split('.');
-  if (/^[a-f0-9-]{36}$/.test(id || '') && signature === await sign(env.APP_TOKEN, 'device:' + id)) return {id, token};
+  if (/^[a-f0-9-]{36}$/.test(id || '') && signature === await sign(signingSecret(env), 'device:' + id)) return {id, token};
   const newId = crypto.randomUUID();
-  return {id:newId, token:newId + '.' + await sign(env.APP_TOKEN, 'device:' + newId)};
+  return {id:newId, token:newId + '.' + await sign(signingSecret(env), 'device:' + newId)};
 }
 export async function quotaFor(request, env, consume = false) {
   if (!env.DAILY_QUOTA) throw Error('Usage protection unavailable');
   const device = await deviceIdentity(request, env);
-  const network = await sign(env.APP_TOKEN, 'network:' + networkIdentity(request.headers.get('CF-Connecting-IP')));
+  const network = await sign(signingSecret(env), 'network:' + networkIdentity(request.headers.get('CF-Connecting-IP')));
   const window = dailyWindow();
   const stub = env.DAILY_QUOTA.get(env.DAILY_QUOTA.idFromName('daily-v1:' + window.day));
   const result = await stub.fetch('https://quota.internal/', {method:'POST',body:JSON.stringify({network,device:device.id,consume,resetAt:window.resetAt})});
