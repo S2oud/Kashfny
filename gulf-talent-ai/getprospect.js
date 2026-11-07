@@ -32,6 +32,8 @@ export async function getProspectSearch(env,company,country,types,budget){
     if(!name||!role||!organization)return null;
     return {url:url||'https://getprospect.com/',title:`${name} - ${role} at ${organization}`,text:`${name}. ${role} at ${organization}. Location: ${clean(p.location?.country,80)}. Employment information reported by GetProspect, not independently verified.`,providerRecord:true,personName:name,personRole:role,recordCompany:organization,recordId:clean(p.id,100)||name+'|'+organization,profileUrl:url,providerPersonId:clean(p.id,100),contactAvailability:{email:p.email?.status==='valid',phone:p.mobile_phone?.status==='found'}};
   }).filter(Boolean);
+  if(people.partialError)records.partialError=people.partialError;
+  return records;
 }
 export function prepareReveal(input,env){
   if(!env.GETPROSPECT_API_KEY)throw Error('Contact lookup is not configured');
