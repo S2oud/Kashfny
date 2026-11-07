@@ -79,5 +79,5 @@ export function searchBudget(env={},companyCount=1){
     Hunter:cap('SEARCH_MAX_HUNTER_CALLS',Math.min(10,companyCount),20)
   };
   const used=Object.fromEntries(Object.keys(limits).map(k=>[k,0]));
-  return {limits,used, reserve(provider) {if(!(provider in limits)||used[provider]>=limits[provider])return false;used[provider]++;return true}, snapshot(){return {limits:{...limits},used:{...used}}}};
+  return {companyCount,limits,used, reserve(provider) {if(!(provider in limits)||used[provider]>=limits[provider])return false;used[provider]++;return true}, snapshot(){return {limits:{...limits},used:{...used}}}};
 }
