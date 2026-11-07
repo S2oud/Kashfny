@@ -73,9 +73,9 @@ export function searchBudget(env={},companyCount=1){
   const limits={
     Tavily:cap('SEARCH_MAX_TAVILY_CALLS',Math.min(12,Math.max(4,companyCount*2)),30),
     'OpenAI Web':cap('SEARCH_MAX_OPENAI_CALLS',Math.min(3,companyCount),5),
-    GetProspect:cap('SEARCH_MAX_GETPROSPECT_CALLS',4,12),
-    Lusha:cap('SEARCH_MAX_LUSHA_CALLS',2,8),
-    FullEnrich:cap('SEARCH_MAX_FULLENRICH_CALLS',2,8),
+    GetProspect:cap('SEARCH_MAX_GETPROSPECT_CALLS',5,12),
+    Lusha:cap('SEARCH_MAX_LUSHA_CALLS',3,8),
+    FullEnrich:cap('SEARCH_MAX_FULLENRICH_CALLS',3,8),
     Hunter:cap('SEARCH_MAX_HUNTER_CALLS',Math.min(10,companyCount),20)
   };
   const used=Object.fromEntries(Object.keys(limits).map(k=>[k,0]));
