@@ -1,3 +1,9 @@
+# Current post-search policy —7November2026
+
+The owner requested a precision-first return to expanded job keywords after unrelated posts appeared. Posts now use Tavily only: **no OpenAI discovery, classification or summaries**, regardless of legacy POST_MAX_*AI* overrides. People search AI is unchanged. Every candidate requires both user-keyword matching and explicit job-intent evidence (vacancies, CV invitations, application windows or employment-related training). Nationality, HR, generic opportunity/career/training words alone do not qualify. Missing text with no job evidence is excluded. Source excerpts replace AI summaries, and old local result snapshots are filtered on display without deleting history. See POST-KEYWORDS-2026-11-07.md.
+
+--- Earlier audit history; the contextual AI post policy below is superseded ---
+
 # Gulf Talent AI
 Arabic-first recruiting research. Deploy from this directory with `npx wrangler deploy`; public app is `/app/`.
 
