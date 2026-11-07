@@ -24,5 +24,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate backend and frontend module syntax
+        run: |
+          node --check gulf-talent-ai/worker.js
+          node --check gulf-talent-ai/provider-search.js
+          node --input-type=module <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const html=readFileSync('gulf-talent-ai/index.html','utf8');
+          const script=html.match(/<script type="module">([\\s\\S]*?)<\\/script>/)?.[1];
+          if(!script)throw Error('Inline frontend module not found');
+          writeFileSync('/tmp/gulf-talent-inline.mjs',script);
+          JS
+          node --check /tmp/gulf-talent-inline.mjs
+          (cd gulf-talent-ai && node build-assets.mjs)
       - name: Run all Gulf Talent AI tests without paid API calls
         run: node --test gulf-talent-ai/*.test.mjs
