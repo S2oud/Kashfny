@@ -69,10 +69,11 @@ export function mergePeople(records) {
   return output;
 }
 export function searchBudget(env={},companyCount=1){
-  const cap=(key,def,max)=>Math.max(1,Math.min(max,Number.isFinite(Number(env[key]))&&String(env[key]).trim()!==''?Math.floor(Number(env[key])):def));
+  const cap=(key,def,max)=>Math.max(0,Math.min(max,Number.isFinite(Number(env[key]))&&String(env[key]).trim()!==''?Math.floor(Number(env[key])):def));
   const limits={
     Tavily:cap('SEARCH_MAX_TAVILY_CALLS',Math.min(12,Math.max(4,companyCount*2)),30),
     'OpenAI Web':cap('SEARCH_MAX_OPENAI_CALLS',Math.min(3,companyCount),5),
+    'OpenAI Role':cap('SEARCH_MAX_AI_ROLE_CALLS',1,2),
     GetProspect:cap('SEARCH_MAX_GETPROSPECT_CALLS',5,12),
     Lusha:cap('SEARCH_MAX_LUSHA_CALLS',3,8),
     FullEnrich:cap('SEARCH_MAX_FULLENRICH_CALLS',3,8),
