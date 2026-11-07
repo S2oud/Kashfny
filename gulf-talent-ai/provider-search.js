@@ -12,7 +12,7 @@ export async function lushaSearch(env,companies,country,types,budget){
  const rows=[],maxPages=pageLimit(env.SEARCH_LUSHA_PAGES,3,8),size=100;
  for(let page=0;page<maxPages;page++){
   if(budget&&!budget.reserve('Lusha'))break;
-  const j=await call(env,'Lusha','/v3/contacts/prospecting',{pagination:{page,size},filters:{contacts:{include:{jobTitles:recruitingTitles(types,true),countries:country==='All GCC'?Object.values(countries):[countries[country]]}},companies:{include:{names:names(companies)}}},options:{includePartialProfiles:false}});
+  let j;try{j=await call(env,'Lusha','/v3/contacts/prospecting',{pagination:{page,size},filters:{contacts:{include:{jobTitles:recruitingTitles(types,true),countries:country==='All GCC'?Object.values(countries):[countries[country]]}},companies:{include:{names:names(companies)}}},options:{includePartialProfiles:false}})}catch(e){if(rows.length){rows.partialError=e.message;break}throw e}
   const results=j.results||[];
   rows.push(...results.map(p=>record('Lusha',{id:p.id,name:[p.firstName,p.lastName].filter(Boolean).join(' '),role:p.jobTitle?.title,company:p.company?.name,url:p.socialLinks?.linkedin,location:p.location?.country})).filter(Boolean));
   if(results.length<size||j.pagination?.hasNext===false)break;
@@ -24,7 +24,7 @@ export async function fullEnrichSearch(env,companies,country,types,budget){
  for(let page=0;page<maxPages;page++){
   if(budget&&!budget.reserve('FullEnrich'))break;
   const offset=page*size;
-  const j=await call(env,'FullEnrich','/people/search',{offset,limit:size,current_company_names:values(names(companies)),current_position_titles:values(recruitingTitles(types,true)),person_locations:values(country==='All GCC'?Object.keys(countries).map(x=>x==='UAE'?'United Arab Emirates':x):[country==='UAE'?'United Arab Emirates':country])});
+  let j;try{j=await call(env,'FullEnrich','/people/search',{offset,limit:size,current_company_names:values(names(companies)),current_position_titles:values(recruitingTitles(types,true)),person_locations:values(country==='All GCC'?Object.keys(countries).map(x=>x==='UAE'?'United Arab Emirates':x):[country==='UAE'?'United Arab Emirates':country])})}catch(e){if(rows.length){rows.partialError=e.message;break}throw e}
   const results=j.people||[];
   rows.push(...results.map(p=>record('FullEnrich',{id:p.id,name:p.full_name,role:p.employment?.current?.title,company:p.employment?.current?.company?.name,url:p.social_profiles?.professional_network?.url,location:p.location?.country})).filter(Boolean));
   if(results.length<size||Number(j.metadata?.total)>0&&j.metadata.total<=offset+results.length)break;
