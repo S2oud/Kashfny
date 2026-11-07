@@ -1,0 +1,12 @@
+# Posts precision correction —7November2026
+
+Owner feedback: contextual AI and broad potential admission returned unrelated posts. This increment explicitly supersedes that post-search policy without rolling back people-search fixes, quota safety or provider protections.
+
+- Require matching search phrases AND deterministic job-intent evidence. Expanded English/Arabic vocabulary covers vacancies/openroles, CV/resume invitations, applications and employment-linked graduate/internship opportunities. Generic nationality, opportunity, HR, training and careers are insufficient alone. Negated hiring and generic career/CV-writing advice are rejected without an actual application/CV invitation.
+- No OpenAI calls in post discovery, classification or summarization. All legacy postAI budget slots are hard-disabled, even if dashboard settings remain nonzero. Tavily remains bounded6calls default/max8, preserving partial results, source URLs, deduplication, dates and any/all intent.
+- Shared post-relevance.js handles server admission and client display of older saved history. Old snapshots are not erased; irrelevant entries and old AI summaries no longer reappear on display. People search and its AI role review are unchanged.
+- Query variants all include job/CV/training intent rather than broad nationality-only searches. No promise that every accepted post is a current verified vacancy; read the real source. Stronger filtering may omit vague image-only opportunities, deliberately favoring precision as requested.
+
+Validation: full Node suite and actual Worker/assets dry-run; English/Arabic positive and negative fixtures include social celebrations, sports, generic advice, policy statistics, no-vacancy announcements, missing text, CV invitations, hashtags and Arabic job adverts. End-to-end mocked search with OpenAI configured asserts zero AI requests, zero AI summaries, and unchanged Tavily limits/partial results. No paid provider or contact requests. Exact counts and CI/deployment identities are recorded on the releasePR after validation.
+
+Final local proof:98/98Node tests,0fail/skip;16Chrome viewport/language/theme states retain a CV invitation and suppress a social post from an old-style result payload. No AI relevance filter remains in the simplified post UI. Shared module is included in all9staticassets. Syntax and actualWranglerdry-run pass. Browser measurements:audit-evidence/browser-keywords-results.json. Real paid searches remain deferred.
