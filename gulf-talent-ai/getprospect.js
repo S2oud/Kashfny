@@ -1,5 +1,6 @@
 // Official API v2: https://getprospect.com/api-docs
 // Search never reveals contact data. Reveals are separate, explicit requests.
+import {recruitingTitles,companyAliases} from './recruiting-quality.js';
 const BASE='https://api.getprospect.com';
 const clean=(value,n=200)=>String(value||'').trim().slice(0,n);
 export function profileURL(value){
@@ -18,22 +19,21 @@ export async function getProspectBalance(env){
   return {configured:true,connected:true,emailCredits:Number(data.email_search?.available)||0,phoneCredits:Number(data.phone_search?.available)||0,walletUSD:Number(data.wallet?.balance)||0,resetAt:data.reset_at||null};
 }
 export function searchFilters(company,country,types){
-  const names=(Array.isArray(company)?company:[company]).flatMap(c=>[c.searchName,c.name,...(c.aliases||[]).filter(a=>/^[A-Z][A-Z0-9& ]{1,12}$/.test(a))]).filter(Boolean);
-  const titles=[];
-  if(types.includes('talent-acquisition'))titles.push('Talent Acquisition');
-  if(types.includes('hr-recruiting'))titles.push('Recruiter','Recruitment','Recruiting');
-  if(types.includes('executive-search'))titles.push('Executive Search','Headhunter','Headhunting');
+  const names=(Array.isArray(company)?company:[company]).flatMap(c=>companyAliases(c));
+  const titles=recruitingTitles(types,true);
   return {filters:{company:{name:{include:[...new Set(names)],match_mode:'CONTAINS'}},person_job_title:{include:titles,match_mode:'CONTAINS'},person_location:{include:country==='All GCC'?['United Arab Emirates','Saudi Arabia','Qatar','Kuwait','Bahrain','Oman']:[country==='UAE'?'United Arab Emirates':country]}},per_page:25,page:1,enrich_email:false,enrich_phone:false};
 }
-export async function getProspectSearch(env,company,country,types){
+export async function getProspectSearch(env,company,country,types,budget){
   if(!env.GETPROSPECT_API_KEY)return [];
-  const people=[];for(let page=1;page<=4;page++){const j=await request(env,'/v2/people/search',{...searchFilters(company,country,types),page});const rows=Array.isArray(j.data)?j.data:[];people.push(...rows);if(rows.length<25)break}
-  return people.map(p=>{
-    const url=profileURL(p.linkedin_url);if(!url)return null;
+  const people=[],limit=Math.max(1,Math.min(10,Number(env.SEARCH_GETPROSPECT_PAGES)||5));for(let page=1;page<=limit;page++){if(budget&&!budget.reserve('GetProspect'))break;let j;try{j=await request(env,'/v2/people/search',{...searchFilters(company,country,types),page})}catch(e){if(people.length){people.partialError=e.message;break}throw e}const rows=Array.isArray(j.data)?j.data:[];people.push(...rows);if(rows.length<25||j.pagination?.has_next===false)break}
+  const records=people.map(p=>{
+    const url=profileURL(p.linkedin_url);
     const position=p.primary_position||{},name=clean(p.full_name||[p.first_name,p.last_name].filter(Boolean).join(' '),90),organization=clean(position.company?.name),role=clean(position.job_title||position.normalized_job_title);
     if(!name||!role||!organization)return null;
-    return {url,title:`${name} - ${role} at ${organization}`,text:`${name}. ${role} at ${organization}. Location: ${clean(p.location?.country,80)}. Employment information reported by GetProspect, not independently verified.`,providerPersonId:clean(p.id,100),contactAvailability:{email:p.email?.status==='valid',phone:p.mobile_phone?.status==='found'}};
+    return {url:url||'https://getprospect.com/',title:`${name} - ${role} at ${organization}`,text:`${name}. ${role} at ${organization}. Location: ${clean(p.location?.country,80)}. Employment information reported by GetProspect, not independently verified.`,providerRecord:true,personName:name,personRole:role,recordCompany:organization,recordId:clean(p.id,100)||name+'|'+organization,profileUrl:url,providerPersonId:clean(p.id,100),contactAvailability:{email:p.email?.status==='valid',phone:p.mobile_phone?.status==='found'}};
   }).filter(Boolean);
+  if(people.partialError)records.partialError=people.partialError;
+  return records;
 }
 export function prepareReveal(input,env){
   if(!env.GETPROSPECT_API_KEY)throw Error('Contact lookup is not configured');

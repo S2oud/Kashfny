@@ -1,0 +1,41 @@
+name: Gulf Talent AI - regression tests
+
+on:
+  pull_request:
+    paths:
+      - "gulf-talent-ai/**"
+      - ".github/workflows/gulf-talent-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "gulf-talent-ai/**"
+      - ".github/workflows/gulf-talent-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate backend and frontend module syntax
+        run: |
+          node --check gulf-talent-ai/worker.js
+          node --check gulf-talent-ai/provider-search.js
+          node --input-type=module <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const html=readFileSync('gulf-talent-ai/index.html','utf8');
+          const script=html.split('<script type="module">')[1]?.split('</script>')[0];
+          if(!script)throw Error('Inline frontend module not found');
+          writeFileSync('/tmp/gulf-talent-inline.mjs',script);
+          JS
+          node --check /tmp/gulf-talent-inline.mjs
+          (cd gulf-talent-ai && node build-assets.mjs)
+      - name: Run all Gulf Talent AI tests without paid API calls
+        run: node --test gulf-talent-ai/*.test.mjs
