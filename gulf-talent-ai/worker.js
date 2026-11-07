@@ -1,4 +1,5 @@
 import {directoryTasks} from './provider-search.js';
+import {roleFit,mergePeople,searchBudget,recruitingTitles} from './recruiting-quality.js';
 import {contactBalance,prepareContact,revealExternal} from './contact-providers.js';
 import {preparePosts,searchPosts} from './posts.js';
 // Cloudflare Worker for Gulf Talent AI. Store secrets in Cloudflare, never in GitHub Pages.
@@ -41,7 +42,7 @@ function convert(r,provider,company){
   const known=knownDomains[(company||'').toUpperCase()]||(website?new URL(website).hostname.replace(/^www\./,''):null);
   const official=known?(domain===known||domain.endsWith('.'+known)):Boolean(company&&company.length>4&&domain.toLowerCase().split('.')[0]===company.toLowerCase().replace(/[^a-z0-9]/g,''));
   const phone=official?officePhone(text):null;
-  return {id:directory&&!profile?provider.toLowerCase()+':'+short(r.recordId,240):source.toLowerCase(),name:directory?short(r.personName,90):title.split(/\s[-–—|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:profile?'profile':directory?'provider-record':'source',emails:directory?(r.workEmails||[]).filter(e=>emails(e).includes(e)):(official?emails(text).filter(email=>email.endsWith('@'+domain)):[]),phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,providerEvidence:[{provider,source,title}],verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null,...(r.providerPersonId?{providerPersonId:r.providerPersonId,contactAvailability:r.contactAvailability}: {})};
+  return {id:directory&&!profile?provider.toLowerCase()+':'+short(r.recordId,240):source.toLowerCase(),name:directory?short(r.personName,90):title.split(/\s[-–—|•:]\s/)[0].slice(0,90),title,role:short(text,145),organization:company||null,category:profile?'profile':directory?'provider-record':'source',emails:directory?(r.workEmails||[]).filter(e=>emails(e).includes(e)):(official?emails(text).filter(email=>email.endsWith('@'+domain)):[]),phone,phoneType:phone?"Company/office number (not verified direct)":null,source,sourceHost:domain,provider,providerEvidence:[{provider,source,title}],verified:false,confidence:official?"source-backed":"unverified",excerpt:short(text,510),publishedDate:r.publishedDate||null,...(r.providerPersonId?{providerPersonId:r.providerPersonId,contactAvailability:r.contactAvailability}: {}),...(directory?{personName:r.personName||'',personRole:r.personRole||'',recordCompany:r.recordCompany||'',profileUrl:r.profileUrl||'',recordId:r.recordId||''}:{})};
 }
 async function tavily(env,query,limit,domains){
   if(!env.TAVILY_API_KEY)return [];
@@ -78,18 +79,24 @@ async function openaiSearch(env,company,role,country,category,candidates=[]){
   return (Array.isArray(parsed.results)?parsed.results:[]).filter(x=>sources.has(canonicalSource(x.url))).slice(0,30);
 }
 function filterRecruiters(records,organization,company,job){
-  const hiring=/talent acquisition|recruit(?:er|ment|ing)|headhunt|executive search|استقطاب|توظيف/i;
-  return records.filter(x=>{
-    const text=x.title+' '+x.excerpt;
-    const evidence=affiliation(text,organization||{id:'custom:'+company.toLowerCase(),name:company,aliases:[]});
-    const companyMatch=Boolean(evidence);if(evidence){x.companyLabels=evidence.labels;x.branchUnspecified=evidence.branchUnspecified;x.matchedCompanyIds=[organization?.id||'custom:'+company.toLowerCase()];x.organization=evidence.labels.map(label=>label.name).join(' · ');x.score+=evidence.branchUnspecified?-4:10;}
-    const generic=/career guide|how to get a job|working at|\bvacanc|\bjob openings|\bjob listings|\bcareers\b|وظائف شاغرة|دليل التوظيف/i.test(x.title);
-    const unrelated=/talent development|talent management|HR operations|learning and development|تطوير المواهب|إدارة المواهب|عمليات الموارد البشرية/i.test(x.title)&&!hiring.test(x.title);
-    const url=new URL(x.source);
-    const jobOrArticle=/^(jobs|careers)\./i.test(url.hostname)||/\/(?:jobs?|careers?|vacancies|posts|pulse|feed|industry-recruitment-uae)(?:\/|$)|recruitment-(?:criteria|agencies)/i.test(url.pathname);
-    const officialBiography=x.confidence==='source-backed'&&/\/(?:leadership|people|team|management|biograph(?:y|ies))\/[^/]+/i.test(url.pathname)&&hiring.test(x.title);
-    return hiring.test(text)&&companyMatch&&!generic&&!unrelated&&!jobOrArticle&&(x.category==='profile'||x.category==='provider-record'||officialBiography);
-  }).sort((a,b)=>b.score-a.score).slice(0,500);
+ const selected=organization||{id:'custom:'+company.toLowerCase(),name:company,aliases:[]};
+ return records.filter(x=>{
+  const sourceText=(x.title||'')+' '+(x.excerpt||'')+' '+(x.recordCompany||'');
+  const evidence=affiliation(sourceText,selected);
+  if(!evidence)return false;
+  const fit=roleFit(x.personRole||x.title);
+  if(fit==='unrelated')return false;
+  let officialBio=false;
+  try{const url=new URL(x.source);officialBio=x.confidence==='source-backed'&&/\/(?:leadership|people|team|management|biograph(?:y|ies))\/[^/]+/i.test(url.pathname)}catch{}
+  if(x.category!=='profile'&&x.category!=='provider-record'&&!officialBio)return false;
+  x.roleConfidence=fit;
+  x.companyLabels=evidence.labels;
+  x.branchUnspecified=evidence.branchUnspecified;
+  x.matchedCompanyIds=[organization?.id||'custom:'+company.toLowerCase()];
+  x.organization=evidence.labels.map(label=>label.name).join(' · ');
+  x.score=(x.score||0)+(fit==='high'?12:2)+(evidence.branchUnspecified?-4:10);
+  return true;
+ }).sort((a,b)=>(a.roleConfidence==='high'?1:0)===(b.roleConfidence==='high'?1:0)?b.score-a.score:(a.roleConfidence==='high'?-1:1)).slice(0,700);
 }
 async function searchSingle(input,env,selectedOrganization=null){
   const enteredCompany=short(input.company,200),country=short(input.country,35)||'UAE',category='people';
