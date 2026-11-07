@@ -25,7 +25,7 @@ export function searchFilters(company,country,types){
 }
 export async function getProspectSearch(env,company,country,types,budget){
   if(!env.GETPROSPECT_API_KEY)return [];
-  const people=[],limit=Math.max(1,Math.min(10,Number(env.SEARCH_GETPROSPECT_PAGES)||5));for(let page=1;page<=limit;page++){if(budget&&!budget.reserve('GetProspect'))break;let j;try{j=await request(env,'/v2/people/search',{...searchFilters(company,country,types),page})}catch(e){if(people.length){people.partialError=e.message;break}throw e}const rows=Array.isArray(j.data)?j.data:[];people.push(...rows);if(rows.length<25||j.pagination?.has_next===false)break}
+  const people=[],limit=Math.max(1,Math.min(10,Math.floor(Number(env.SEARCH_GETPROSPECT_PAGES))||5));for(let page=1;page<=limit;page++){if(budget&&!budget.reserve('GetProspect'))break;let j;try{j=await request(env,'/v2/people/search',{...searchFilters(company,country,types),page})}catch(e){if(people.length){people.partialError=e.message;break}throw e}const rows=Array.isArray(j.data)?j.data:[];people.push(...rows);if(rows.length<25||j.pagination?.has_next===false)break}
   const records=people.map(p=>{
     const url=profileURL(p.linkedin_url);
     const position=p.primary_position||{},name=clean(p.full_name||[p.first_name,p.last_name].filter(Boolean).join(' '),90),organization=clean(position.company?.name),role=clean(position.job_title||position.normalized_job_title);

@@ -30,3 +30,7 @@ test('search budget caps external requests and exposes consumption',()=>{
 test('company alias retrieval is unique and bounded',()=>{
   assert.deepEqual(companyAliases({name:'ADIA',aliases:['ADIA','Abu Dhabi Investment Authority']}),['ADIA','Abu Dhabi Investment Authority']);
 });
+
+test('ambiguous shared name/company/role cannot attach unlinked evidence to either distinct profile',()=>{const base={name:'Ali Mohammed Hassan',recordCompany:'ADIA',personRole:'Recruiter'};const rows=mergePeople([{...base,source:'https://linkedin.com/in/a'},{...base,source:'https://linkedin.com/in/b'},{...base,source:'https://getprospect.com/',providers:['GetProspect']}]);assert.equal(rows.length,3);assert.ok(rows.slice(0,2).every(p=>!p.providers.includes('GetProspect')))});
+
+test('hybrid discovery retains nontraditional recruiting titles and adjacent human-capital roles',()=>{assert.equal(roleFit('Executive Search Consultant'),'high');assert.equal(roleFit('Executive Talent Partner'),'high');assert.equal(roleFit('Human Capital Partner'),'potential');assert.equal(roleFit('HR Business Partner'),'potential');assert.equal(roleFit('Software Engineer'),'unrelated')});
