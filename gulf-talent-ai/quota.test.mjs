@@ -11,7 +11,7 @@ function fixture() {
   ctx.storage.sql.exec=(query,...args)=>{const rows=db.prepare(query).all(...args);return {toArray:()=>rows}};
   let object=new DailyQuota(ctx);
   const env={APP_TOKEN:'test-only-secret',DEVICE_SIGNING_KEY:'server-only-signing-secret',ALLOWED_ORIGIN:'https://s2oud.github.io',DAILY_QUOTA:{idFromName:name=>name,get:()=>({fetch:(url,init)=>object.fetch(new Request(url,init))})}};
-  const request=(path='/usage',opts={})=>worker.fetch(new Request('https://example.test'+path,{method:opts.consume?'POST':'GET',headers:{Authorization:'Bearer '+(opts.auth||env.APP_TOKEN),'CF-Connecting-IP':opts.ip||'192.0.2.10',...(opts.token?{'X-Device-Token':opts.token}:{}),...opts.headers},...(opts.consume?{body:JSON.stringify({country:'UAE'})}:{})}),env);
+  const request=(path='/usage',opts={})=>worker.fetch(new Request('https://example.test'+path,{method:opts.consume?'POST':'GET',headers:{Authorization:'Bearer '+(opts.auth||env.APP_TOKEN),'CF-Connecting-IP':opts.ip||'192.0.2.10',...(opts.token?{'X-Device-Token':opts.token}:{}),...opts.headers},...(opts.consume?{body:JSON.stringify({company:'ADIA',country:'UAE',types:['hr-recruiting']})}:{})}),env);
   return {env,request,restart(){object=new DailyQuota(ctx)}};
 }
 test('Dubai midnight and IPv6 /64 grouping',()=>{
@@ -23,7 +23,7 @@ test('parallel requests allow exactly 10; reset browser and forged forwarding ca
   const f=fixture();
   const replies=await Promise.all(Array.from({length:30},()=>f.request('/search',{consume:true})));
   assert.equal(replies.filter(r=>r.status===429).length,20);
-  assert.equal(replies.filter(r=>r.status===400).length,10);
+  assert.equal(replies.filter(r=>r.status===503).length,10);
   const denied=await f.request('/brief',{consume:true,headers:{'X-Forwarded-For':'198.51.100.99','X-Real-IP':'198.51.100.99','X-Device-Token':'forged'}});
   assert.equal(denied.status,429);assert.ok(Number(denied.headers.get('Retry-After'))>0);
   f.restart();

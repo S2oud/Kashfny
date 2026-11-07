@@ -1,0 +1,130 @@
+[
+  {
+    "width": 360,
+    "language": "ar",
+    "theme": "dark",
+    "scroll": 360,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 360,
+    "language": "ar",
+    "theme": "light",
+    "scroll": 360,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 360,
+    "language": "en",
+    "theme": "dark",
+    "scroll": 360,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 360,
+    "language": "en",
+    "theme": "light",
+    "scroll": 360,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "language": "ar",
+    "theme": "dark",
+    "scroll": 390,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "language": "ar",
+    "theme": "light",
+    "scroll": 390,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "language": "en",
+    "theme": "dark",
+    "scroll": 390,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "language": "en",
+    "theme": "light",
+    "scroll": 390,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 834,
+    "language": "ar",
+    "theme": "dark",
+    "scroll": 834,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 834,
+    "language": "ar",
+    "theme": "light",
+    "scroll": 834,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 834,
+    "language": "en",
+    "theme": "dark",
+    "scroll": 834,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 834,
+    "language": "en",
+    "theme": "light",
+    "scroll": 834,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "language": "ar",
+    "theme": "dark",
+    "scroll": 1280,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "language": "ar",
+    "theme": "light",
+    "scroll": 1280,
+    "dir": "rtl",
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "language": "en",
+    "theme": "dark",
+    "scroll": 1280,
+    "dir": "ltr",
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "language": "en",
+    "theme": "light",
+    "scroll": 1280,
+    "dir": "ltr",
+    "errors": []
+  }
+]

@@ -1,7 +1,7 @@
 import {profileURL,getProspectSearch} from './getprospect.js';
 import {recruitingTitles as titles,companyAliases} from './recruiting-quality.js';
 export const recruitingTitles=titles;
-const pageLimit=(value,defaultValue,max)=>Math.max(1,Math.min(max,Number(value)||defaultValue));
+const pageLimit=(value,defaultValue,max)=>Math.max(1,Math.min(max,Math.floor(Number(value))||defaultValue));
 const cut=(s,n=180)=>String(s||'').trim().slice(0,n);
 const countries={UAE:'AE','Saudi Arabia':'SA',Qatar:'QA',Kuwait:'KW',Bahrain:'BH',Oman:'OM'};
 
@@ -38,6 +38,7 @@ export function directoryTasks(env,companies,country,types,budget){
  if(env.GETPROSPECT_API_KEY)tasks.push({provider:'GetProspect',run:()=>getProspectSearch(env,companies,country,types,budget)});
  if(env.LUSHA_API_KEY)tasks.push({provider:'Lusha',run:()=>lushaSearch(env,companies,country,types,budget)});
  if(env.FULLENRICH_API_KEY)tasks.push({provider:'FullEnrich',run:()=>fullEnrichSearch(env,companies,country,types,budget)});
- if(env.HUNTER_API_KEY)for(const company of companies)tasks.push({provider:'Hunter',run:()=>hunterSearch(env,company,country,types,budget)});
+ // Hunter Domain Search returns billable contact data. Never run it automatically.
+ // Explicit user-requested reveals remain in contact-providers.js.
  return tasks;
 }

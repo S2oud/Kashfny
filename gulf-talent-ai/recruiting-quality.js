@@ -4,8 +4,8 @@ const TITLE_TERMS = {
   'hr-recruiting': ['Recruiter','Recruitment','Recruiting','Recruitment Specialist','Recruitment Officer','HR Recruiter','Recruitment Manager','Hiring Specialist','مسؤول توظيف','أخصائي توظيف'],
   'executive-search': ['Executive Search','Headhunter','Headhunting','Executive Recruiter','Search Consultant','Executive Talent']
 };
-const REGEX_RECRUITING = /talent acquisition|talent sourc(?:e|er|ing)|talent partner|recruit(?:er|ment|ing)|headhunt|executive search|staffing|hiring specialist|استقطاب|توظيف|باحث عن المواهب/i;
-const REGEX_ADJACENT = /human resources|\bhr\b|people (?:and|&) culture|people partner|people operations|workforce|personnel|الموارد البشرية|شؤون الموظفين/i;
+const REGEX_RECRUITING = /talent acquisition|talent sourc(?:e|er|ing)|talent partner|recruit(?:er|ment|ing)|headhunt|executive search|staffing|executive talent|hiring specialist|استقطاب|توظيف|باحث عن المواهب/i;
+const REGEX_ADJACENT = /human resources|\bhr\b|people (?:and|&) culture|people business partner|human capital|search consultant|hr business partner|talent advisor|people partner|people operations|workforce|personnel|الموارد البشرية|شؤون الموظفين/i;
 const REGEX_UNRELATED = /talent development|talent management|learning and development|hr operations|payroll|training coordinator|تطوير المواهب|إدارة المواهب|الرواتب/i;
 const normalize = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[\u064b-\u065f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
 export function recruitingTitles(types, extended=false) {
@@ -40,12 +40,13 @@ function nameKey(row) {
   return name+'|'+company+'|'+job;
 }
 export function mergePeople(records) {
-  const output=[],linked=new Map(),unnamed=new Map();
+  const output=[],linked=new Map(),unnamed=new Map(),profileKeys=new Map();
+  for(const row of records){if(!row)continue;const key=nameKey(row),profile=personProfile(row);if(key&&profile){if(!profileKeys.has(key))profileKeys.set(key,new Set());profileKeys.get(key).add(profile)}}
   for(const current of records) {
     if(!current)continue;
     const linkedin=personProfile(current),fallback=nameKey(current);
     let i=linkedin?linked.get(linkedin):undefined;
-    if(i===undefined && fallback) {
+    if(i===undefined && fallback && (profileKeys.get(fallback)?.size||0)<=1) {
       const match=unnamed.get(fallback);
       if(match!==undefined && (!linkedin || !personProfile(output[match])))i=match;
     }
@@ -80,5 +81,5 @@ export function searchBudget(env={},companyCount=1){
     Hunter:cap('SEARCH_MAX_HUNTER_CALLS',Math.min(10,companyCount),20)
   };
   const used=Object.fromEntries(Object.keys(limits).map(k=>[k,0]));
-  return {companyCount,limits,used, reserve(provider) {if(!(provider in limits)||used[provider]>=limits[provider])return false;used[provider]++;return true}, snapshot(){return {limits:{...limits},used:{...used}}}};
+  return {companyCount,limits,used, reserve(provider) {if(!(provider in limits)||used[provider]>=limits[provider])return false;used[provider]++;return true}, snapshot(){return {limits:{...limits},used:{...used},exhausted:Object.keys(limits).filter(k=>limits[k]>0&&used[k]>=limits[k]),monetaryCap:false}}};
 }

@@ -143,7 +143,7 @@ async function searchSingle(input,env,selectedOrganization=null,budget=null){
   return {errors,providerStatus,results:filterRecruiters(mergePeople(records),organization,company,job)};
  };
  let collected=collect();
- if(collected.results.length<12&&env.TAVILY_API_KEY){
+ if(collected.results.length<Math.max(12,Math.min(100,Math.floor(Number(env.SEARCH_EXPAND_BELOW)||30)))&&env.TAVILY_API_KEY){
   const extra=[];
   const broader=recruitingTitles(types,true).filter(t=>!/^(Talent Acquisition|Recruiter|Recruitment|Recruiting|Executive Search|Headhunter)$/i.test(t)).slice(0,5).join(' OR ');
   addTavily(target+' ('+(broader||'Recruitment Specialist OR Talent Partner')+') '+country+' site:linkedin.com/in/',['linkedin.com'],extra);
@@ -166,7 +166,7 @@ async function search(input,env){
     catch(e){return {company,results:[],errors:[short(e.message,100)],providerStatus:{},status:502}}
   }));
   const directoryResults=await directoryPending;
-  for(const batch of batches){for(let i=0;i<directories.length;i++){const provider=directories[i].provider,result=directoryResults[i];batch.providerStatus??={};batch.errors??=[];if(result.status==='rejected'){batch.providerStatus[provider]=batch.providerStatus[provider]||'unavailable';batch.errors.push(provider+': '+short(result.reason?.message,100));continue}if(result.value?.partialError){batch.providerStatus[provider]='partial';batch.errors.push(provider+': later page failed ('+short(result.value.partialError,90)+')')}else batch.providerStatus[provider]='completed';const records=result.value.map(raw=>convert(raw,provider,batch.company.name)).filter(Boolean).map(r=>({...r,providers:[provider],score:relevance(r,batch.company.name,'recruitment talent acquisition')}));batch.results.push(...filterRecruiters(records,batch.company,batch.company.name,'recruitment talent acquisition'))}}
+  for(const batch of batches){for(let i=0;i<directories.length;i++){const provider=directories[i].provider,result=directoryResults[i];batch.providerStatus??={};batch.errors??=[];if(result.status==='rejected'){batch.providerStatus[provider]=batch.providerStatus[provider]||'unavailable';batch.errors.push(provider+': '+short(result.reason?.message,100));continue}if(result.value?.partialError){batch.providerStatus[provider]='partial';batch.errors.push(provider+': later page failed ('+short(result.value.partialError,90)+')')}else if(batch.providerStatus[provider]!=='partial')batch.providerStatus[provider]='completed';const records=result.value.map(raw=>convert(raw,provider,batch.company.name)).filter(Boolean).map(r=>({...r,providers:[provider],score:relevance(r,batch.company.name,'recruitment talent acquisition')}));batch.results.push(...filterRecruiters(records,batch.company,batch.company.name,'recruitment talent acquisition'))}}
   const invalid=batches.find(b=>b.status===400);if(invalid)return invalid;
   const results=mergePeople(mergeCompanyResults(batches));
   await reviewPotentialLeads(results,env,budget);
@@ -189,7 +189,7 @@ export default {async fetch(request,env){
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin||"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Authorization,Content-Type,X-Device-Token","Access-Control-Max-Age":"3600"}});
   const url=new URL(request.url);
   if(url.pathname==="/"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI API",frontend:"https://s2oud.github.io/Kashfny/gulf-talent-ai/",health:"/health",message:"This is the private search API backend, not the website."},200,origin);
-  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,fullenrich:!!env.FULLENRICH_API_KEY,lusha:!!env.LUSHA_API_KEY,hunter:!!env.HUNTER_API_KEY},200,origin);
+  if(url.pathname==="/health"&&request.method==="GET")return response({ok:true,service:"Gulf Talent AI",release:env.RELEASE_COMMIT||null,tavily:!!env.TAVILY_API_KEY,openai:!!env.OPENAI_API_KEY,getprospect:!!env.GETPROSPECT_API_KEY,fullenrich:!!env.FULLENRICH_API_KEY,lusha:!!env.LUSHA_API_KEY,hunter:!!env.HUNTER_API_KEY},200,origin);
   if(["/auth-check","/usage","/provider-check"].includes(url.pathname)&&request.method==="GET"){
     if(!env.APP_TOKEN)return response({error:"Set APP_TOKEN secret in Cloudflare Worker"},503,origin);
     if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"APP_TOKEN does not match"},401,origin);
@@ -204,12 +204,12 @@ export default {async fetch(request,env){
   if(request.headers.get("Authorization")!=="Bearer "+env.APP_TOKEN)return response({error:"Unauthorized"},401,origin);
   let usage;
   try{
-    const input=await request.json();
+    const reader=request.body?.getReader();let bytes=0,chunks=[];if(reader){try{while(true){const {value,done}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>14000){await reader.cancel();return response({error:'Payload too large'},413,origin)}chunks.push(value)}}finally{reader.releaseLock()}}const combined=new Uint8Array(bytes);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length}let input;try{input=JSON.parse(new TextDecoder().decode(combined))}catch{return response({error:'Invalid JSON'},400,origin)}if(!input||typeof input!=='object'||Array.isArray(input))return response({error:'Invalid input'},400,origin);
     if(JSON.stringify(input).length>14000)return response({error:"Payload too large"},413,origin);
     if(url.pathname==='/enrich-status'){let pollUsage;try{pollUsage=await quotaFor(request,env)}catch{return response({error:'Usage protection unavailable. Try again later.'},503,origin)}try{return response({...await fullRevealStatus(env,input.ticket,pollUsage.deviceToken),usage:pollUsage},200,origin)}catch(e){return response({error:short(e.message,150),usage:pollUsage},e.status||502,origin)}}
     if(url.pathname==='/posts-search'){try{preparePosts(input)}catch(e){return response({error:e.message},400,origin)}}
     let revealInput;if(url.pathname==='/enrich'){if(input.provider&&!['GetProspect','FullEnrich','Lusha','Hunter'].includes(input.provider))return response({error:'Unknown contact provider'},400,origin);try{revealInput=['Lusha','Hunter'].includes(input.provider)?prepareContact(input,env):input.provider==='FullEnrich'?prepareFullReveal(input,env):prepareReveal(input,env)}catch(e){return response({error:e.message},400,origin)}}
-    if(url.pathname==='/search'&&Array.isArray(input.companies)){try{selectedCompanies(input)}catch(e){return response({error:e.message},400,origin)}}
+    if(url.pathname==='/search'){try{selectedCompanies(input);if(!allowedCountries.has(input.country||'UAE')||!Array.isArray(input.types)||!input.types.length||input.types.some(t=>!['talent-acquisition','hr-recruiting','executive-search'].includes(t)))throw Error('Choose valid recruiting teams and country')}catch(e){return response({error:e.message},400,origin)}}
     try { usage=await quotaFor(request,env,true); }
     catch { return response({error:"Usage protection unavailable. Try again later."},503,origin); }
     if(!usage.allowed){
