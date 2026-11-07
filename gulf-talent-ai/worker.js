@@ -154,18 +154,19 @@ async function searchSingle(input,env,selectedOrganization=null,budget=null){
 }
 async function search(input,env){
   let companies;try{companies=selectedCompanies(input)}catch(e){return {error:e.message,status:400}}
-  if(companies.length===1&&!Array.isArray(input.companies))return searchSingle(input,env);
+  const budget=searchBudget(env,companies.length);
+  if(companies.length===1&&!Array.isArray(input.companies))return searchSingle(input,env,null,budget);
   if(!allowedCountries.has(input.country||'UAE')||!Array.isArray(input.types)||!input.types.length||input.types.some(t=>!['talent-acquisition','hr-recruiting','executive-search'].includes(t)))return {error:'Choose valid recruiting teams and country',status:400};
-  const directories=directoryTasks(env,companies,input.country||'UAE',input.types),directoryPending=Promise.allSettled(directories.map(t=>t.run()));
+  const directories=directoryTasks(env,companies,input.country||'UAE',input.types,budget),directoryPending=Promise.allSettled(directories.map(t=>t.run()));
   const batches=await Promise.all(companies.map(async company=>{
-    try{return {...await searchSingle({...input,webOnly:true,company:company.name,companyId:company.id},env,company),company}}
+    try{return {...await searchSingle({...input,webOnly:true,company:company.name,companyId:company.id},env,company,budget),company}}
     catch(e){return {company,results:[],errors:[short(e.message,100)],providerStatus:{},status:502}}
   }));
   const directoryResults=await directoryPending;
   for(const batch of batches){for(let i=0;i<directories.length;i++){const provider=directories[i].provider,result=directoryResults[i];batch.providerStatus??={};batch.errors??=[];if(result.status==='rejected'){batch.providerStatus[provider]=batch.providerStatus[provider]||'unavailable';batch.errors.push(provider+': '+short(result.reason?.message,100));continue}batch.providerStatus[provider]='completed';const records=result.value.map(raw=>convert(raw,provider,batch.company.name)).filter(Boolean).map(r=>({...r,providers:[provider],score:relevance(r,batch.company.name,'recruitment talent acquisition')}));batch.results.push(...filterRecruiters(records,batch.company,batch.company.name,'recruitment talent acquisition'))}}
   const invalid=batches.find(b=>b.status===400);if(invalid)return invalid;
-  const results=mergeCompanyResults(batches);
-  const providerStatus={};for(const b of batches)for(const [name,status] of Object.entries(b.providerStatus||{}))providerStatus[name]=providerStatus[name]==='completed'?'completed':status;return {providerStatus,results,companies:companies.map(c=>({id:c.id,name:c.name})),companySummaries:batches.map(b=>({id:b.company.id,name:b.company.name,count:results.filter(r=>r.matchedCompanyIds.includes(b.company.id)).length,errors:b.errors||[],providerStatus:b.providerStatus||{}})),errors:batches.flatMap(b=>(b.errors||[b.error].filter(Boolean)).map(e=>b.company.name+': '+e)),sourceCount:results.length,returnedAt:new Date().toISOString(),usageCost:1};
+  const results=mergePeople(mergeCompanyResults(batches));
+  const providerStatus={};for(const b of batches)for(const [name,status] of Object.entries(b.providerStatus||{}))providerStatus[name]=providerStatus[name]==='completed'?'completed':status;return {providerStatus,results,companies:companies.map(c=>({id:c.id,name:c.name})),companySummaries:batches.map(b=>({id:b.company.id,name:b.company.name,count:results.filter(r=>r.matchedCompanyIds.includes(b.company.id)).length,errors:b.errors||[],providerStatus:b.providerStatus||{}})),errors:batches.flatMap(b=>(b.errors||[b.error].filter(Boolean)).map(e=>b.company.name+': '+e)),sourceCount:results.length,returnedAt:new Date().toISOString(),usageCost:1,searchBudget:budget.snapshot()};
 }
 async function brief(input,env){
   if(!env.OPENAI_API_KEY)return {error:"Configure OPENAI_API_KEY server secret to enable AI brief. ChatGPT plan does not supply API access.",status:503};
