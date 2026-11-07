@@ -1,5 +1,6 @@
 import {directoryTasks} from './provider-search.js';
 import {roleFit,mergePeople,searchBudget,recruitingTitles} from './recruiting-quality.js';
+import {reviewPotentialLeads} from './role-review.js';
 import {contactBalance,prepareContact,revealExternal} from './contact-providers.js';
 import {preparePosts,searchPosts} from './posts.js';
 // Cloudflare Worker for Gulf Talent AI. Store secrets in Cloudflare, never in GitHub Pages.
@@ -130,7 +131,8 @@ async function searchSingle(input,env,selectedOrganization=null,budget=null){
   pending.forEach((item,i)=>{
    const provider=tasks[i].provider;
    if(item.status==='rejected'){errors.push(provider+': '+short(item.reason?.message||'error',100));providerStatus[provider]=providerStatus[provider]||'unavailable';return}
-   providerStatus[provider]='completed';
+   if(item.value?.partialError){errors.push(provider+': later page failed ('+short(item.value.partialError,90)+')');providerStatus[provider]='partial'}
+   else if(providerStatus[provider]!=='partial')providerStatus[provider]='completed';
    for(const raw of item.value||[]){
     const x=convert(raw,provider,company);if(!x)continue;
     x.score=relevance(x,company,job);
@@ -148,6 +150,7 @@ async function searchSingle(input,env,selectedOrganization=null,budget=null){
   addTavily(target+' (HR recruiter OR Talent Sourcing OR Recruitment Manager) '+country+' profile',null,extra);
   if(extra.length){const more=await Promise.allSettled(extra.map(x=>x.run()));tasks.push(...extra);pending.push(...more);collected=collect()}
  }
+ if(!input.webOnly)await reviewPotentialLeads(collected.results,env,quota);
  return {query,organization:organization?{id:organization.id,name:organization.name,country:organization.country}:null,
   ...collected,sourceCount:collected.results.length,returnedAt:new Date().toISOString(),searchBudget:quota.snapshot(),
   warning:'Source-backed research leads, not verified employees. Check current employment and contact details in the linked sources.'};
@@ -163,10 +166,11 @@ async function search(input,env){
     catch(e){return {company,results:[],errors:[short(e.message,100)],providerStatus:{},status:502}}
   }));
   const directoryResults=await directoryPending;
-  for(const batch of batches){for(let i=0;i<directories.length;i++){const provider=directories[i].provider,result=directoryResults[i];batch.providerStatus??={};batch.errors??=[];if(result.status==='rejected'){batch.providerStatus[provider]=batch.providerStatus[provider]||'unavailable';batch.errors.push(provider+': '+short(result.reason?.message,100));continue}batch.providerStatus[provider]='completed';const records=result.value.map(raw=>convert(raw,provider,batch.company.name)).filter(Boolean).map(r=>({...r,providers:[provider],score:relevance(r,batch.company.name,'recruitment talent acquisition')}));batch.results.push(...filterRecruiters(records,batch.company,batch.company.name,'recruitment talent acquisition'))}}
+  for(const batch of batches){for(let i=0;i<directories.length;i++){const provider=directories[i].provider,result=directoryResults[i];batch.providerStatus??={};batch.errors??=[];if(result.status==='rejected'){batch.providerStatus[provider]=batch.providerStatus[provider]||'unavailable';batch.errors.push(provider+': '+short(result.reason?.message,100));continue}if(result.value?.partialError){batch.providerStatus[provider]='partial';batch.errors.push(provider+': later page failed ('+short(result.value.partialError,90)+')')}else batch.providerStatus[provider]='completed';const records=result.value.map(raw=>convert(raw,provider,batch.company.name)).filter(Boolean).map(r=>({...r,providers:[provider],score:relevance(r,batch.company.name,'recruitment talent acquisition')}));batch.results.push(...filterRecruiters(records,batch.company,batch.company.name,'recruitment talent acquisition'))}}
   const invalid=batches.find(b=>b.status===400);if(invalid)return invalid;
   const results=mergePeople(mergeCompanyResults(batches));
-  const providerStatus={};for(const b of batches)for(const [name,status] of Object.entries(b.providerStatus||{}))providerStatus[name]=providerStatus[name]==='completed'?'completed':status;return {providerStatus,results,companies:companies.map(c=>({id:c.id,name:c.name})),companySummaries:batches.map(b=>({id:b.company.id,name:b.company.name,count:results.filter(r=>r.matchedCompanyIds.includes(b.company.id)).length,errors:b.errors||[],providerStatus:b.providerStatus||{}})),errors:batches.flatMap(b=>(b.errors||[b.error].filter(Boolean)).map(e=>b.company.name+': '+e)),sourceCount:results.length,returnedAt:new Date().toISOString(),usageCost:1,searchBudget:budget.snapshot()};
+  await reviewPotentialLeads(results,env,budget);
+  const providerStatus={};for(const b of batches)for(const [name,status] of Object.entries(b.providerStatus||{}))providerStatus[name]=providerStatus[name]==='partial'||status==='partial'?'partial':providerStatus[name]==='completed'?'completed':status;return {providerStatus,results,companies:companies.map(c=>({id:c.id,name:c.name})),companySummaries:batches.map(b=>({id:b.company.id,name:b.company.name,count:results.filter(r=>r.matchedCompanyIds.includes(b.company.id)).length,errors:b.errors||[],providerStatus:b.providerStatus||{}})),errors:batches.flatMap(b=>(b.errors||[b.error].filter(Boolean)).map(e=>b.company.name+': '+e)),sourceCount:results.length,returnedAt:new Date().toISOString(),usageCost:1,searchBudget:budget.snapshot()};
 }
 async function brief(input,env){
   if(!env.OPENAI_API_KEY)return {error:"Configure OPENAI_API_KEY server secret to enable AI brief. ChatGPT plan does not supply API access.",status:503};
